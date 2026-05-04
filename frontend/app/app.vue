@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <NuxtRouteAnnouncer />
-    <NuxtWelcome />
-  </div>
+	<div>
+		<NuxtRouteAnnouncer />
+		<MongoCli />
+	</div>
 </template>

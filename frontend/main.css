@@ -17,3 +17,19 @@
 
 @layer base {
 }
+
+@utility btn {
+	@apply px-12 py-6 rounded-sm text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+@utility btn-cmd {
+	@apply bg-secondary border-surface/20 text-surface hover:bg-bright-primary/15 hover:border-bright-primary/50;
+}
+
+@utility btn-submit {
+	@apply bg-bright-primary border-bright-primary text-secondary hover:bg-bright-primary/90 font-semibold px-16;
+}
+
+@utility btn-danger {
+	@apply bg-accent border-accent text-secondary hover:bg-accent/90 font-semibold px-16;
+}
