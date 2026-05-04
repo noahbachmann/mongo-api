@@ -120,7 +120,7 @@
 			case 'insert-document':
 				return `db.${c.collection}.insertOne(${snippet(jsonInput.value)})`
 			case 'update-document':
-				return `db.${c.collection}.replaceOne({_id: "${c.id}"}, ${snippet(jsonInput.value)})`
+				return `db.${c.collection}.updateOne({_id: "${c.id}"}, ${snippet(jsonInput.value)})`
 			case 'delete-document':
 				return `db.${c.collection}.deleteOne({_id: "${c.id}"})`
 		}
