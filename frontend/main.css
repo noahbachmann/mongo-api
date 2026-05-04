@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+
+@theme {
+	--spacing: 1px;
+
+	--container-xl: 1440px;
+	--container-lg: 1200px;
+	--container-md: 1020px;
+	--container-sm: 820px;
+}
+
+@layer base {
+}
