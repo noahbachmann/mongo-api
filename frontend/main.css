@@ -33,3 +33,11 @@
 @utility btn-danger {
 	@apply bg-accent border-accent text-secondary hover:bg-accent/90 font-semibold px-16;
 }
+
+@utility btn-inline {
+	@apply px-6 py-2 rounded-sm text-xs border border-surface/20 text-surface/80 hover:bg-bright-primary/15 hover:border-bright-primary/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors;
+}
+
+@utility input-cli {
+	@apply bg-secondary text-surface border border-surface/20 rounded-sm px-6 py-2 text-sm focus:outline-none focus:border-bright-primary disabled:cursor-not-allowed;
+}
