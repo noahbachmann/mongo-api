@@ -76,3 +76,20 @@ For local dev, prefer a Nitro dev proxy in `nuxt.config.ts` (`nitro.devProxy`) o
 
 - Vue 3 SFCs with `<script setup lang="ts">`.
 - Rely on Nuxt auto-imports — do **not** manually import `ref`, `computed`, `useState`, `useFetch`, `$fetch`, `definePageMeta`, etc., nor components under `app/components/`. Manually importing them suppresses Nuxt's auto-import handling and creates inconsistent code.
+
+## Styling
+
+- **Tailwind v4** is the styling system (configured via `@tailwindcss/vite` in `nuxt.config.ts`, with CSS-first config in `main.css`). Use Tailwind utility classes for everything.
+- **Do not use inline `style="..."` attributes**, and avoid `<style>` blocks in SFCs unless a utility genuinely cannot express the rule (e.g. complex keyframe animations). When in doubt, reach for a utility first.
+- **Spacing scale is `--spacing: 1px`** (set in `main.css`). This is intentional and differs from Tailwind's default 4px scale: `p-4` = 4px, `gap-12` = 12px, `mt-24` = 24px. Pick numbers that read as raw pixel values, not as multiples of 4.
+- **Colors live as theme tokens** in `main.css` under `@theme`. Use the semantic utilities (`bg-primary`, `text-secondary`, `border-accent`, `bg-bright-primary`, `bg-surface`) rather than raw hex codes or Tailwind's default palette (`bg-blue-500`, etc.). If a needed color is missing, add it to `@theme` rather than hardcoding it in a component.
+
+### Color theme — "Verdant" (MongoDB-aligned)
+
+| Token                    | Hex       | Role                                                  |
+| ------------------------ | --------- | ----------------------------------------------------- |
+| `--color-primary`        | `#00684A` | Deep forest green — primary actions, active state     |
+| `--color-bright-primary` | `#13AA52` | Mongo leaf green — hover, highlights, success         |
+| `--color-secondary`      | `#1C1C1C` | Rich ink — body text, structural lines                |
+| `--color-accent`         | `#F5B82E` | Warm amber — warnings, badges, attention              |
+| `--color-surface`        | `#FAFAF7` | Warm off-white — page background                      |

@@ -7,6 +7,12 @@
 	--container-lg: 1200px;
 	--container-md: 1020px;
 	--container-sm: 820px;
+
+	--color-primary: #00684a;
+	--color-bright-primary: #13aa52;
+	--color-secondary: #1c1c1c;
+	--color-accent: #f5b82e;
+	--color-surface: #fafaf7;
 }
 
 @layer base {
