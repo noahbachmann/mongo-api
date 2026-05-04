@@ -65,8 +65,15 @@
 	}
 
 	function normalizeDocuments(data: unknown): DocItem[] {
-		if (!Array.isArray(data)) return []
-		return data.map((item) => ({ id: extractId(item), json: safeStringify(item) }))
+		let arr = data
+		if (data && typeof data === 'object' && 'documents' in data) {
+			arr = (data as { documents: unknown }).documents
+		}
+		if (!Array.isArray(arr)) return []
+		return arr.map((item) => {
+			const parsed = typeof item === 'string' ? JSON.parse(item) : item
+			return { id: extractId(parsed), json: safeStringify(parsed) }
+		})
 	}
 
 	function safeStringify(v: unknown): string {
