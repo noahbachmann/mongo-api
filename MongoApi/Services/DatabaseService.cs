@@ -3,16 +3,10 @@ using MongoDB.Driver;
 
 namespace MongoApi.Services;
 
-public class DatabaseService
+public class DatabaseService(IMongoClient client, string defaultDatabase)
 {
-    private readonly IMongoClient _client;
-    private readonly string _defaultDatabase;
-
-    public DatabaseService(IMongoClient client, string defaultDatabase)
-    {
-        _client = client;
-        _defaultDatabase = defaultDatabase;
-    }
+    private readonly IMongoClient _client = client;
+    private readonly string _defaultDatabase = defaultDatabase;
 
     // ── Databases ──
 
