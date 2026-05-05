@@ -106,24 +106,9 @@ public class MongoDBService(IMongoClient mongoClient, string defaultDatabase)
 
     public async Task<long> UpdateDocumentAsync(
         string collectionName,
-        string id,
-        string json,
-        string? dbName = null)
-    {
-        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
-        var collection = db.GetCollection<BsonDocument>(collectionName);
-
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", ObjectId.Parse(id));
-        var update = BsonDocument.Parse(json);
-        var result = await collection.UpdateOneAsync(filter, update);
-        return result.ModifiedCount;
-    }
-
-    public async Task<long> UpdateDocumentsAsync(
-        string collectionName,
         string json,
         string? filter,
-        string? dbName = null)
+        string? dbName)
     {
         var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var collection = db.GetCollection<BsonDocument>(collectionName);
@@ -132,7 +117,27 @@ public class MongoDBService(IMongoClient mongoClient, string defaultDatabase)
             ? FilterDefinition<BsonDocument>.Empty
             : new BsonDocumentFilterDefinition<BsonDocument>(BsonDocument.Parse(filter));
 
-        var update = BsonDocument.Parse(json);
+        var update = new BsonDocument("$set", BsonDocument.Parse(json));
+
+        var result = await collection.UpdateOneAsync(filterDoc, update);
+        return result.ModifiedCount;
+    }
+
+    public async Task<long> UpdateDocumentsAsync(
+        string collectionName,
+        string json,
+        string? filter,
+        string? dbName)
+    {
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
+        var collection = db.GetCollection<BsonDocument>(collectionName);
+
+        var filterDoc = string.IsNullOrEmpty(filter)
+            ? FilterDefinition<BsonDocument>.Empty
+            : new BsonDocumentFilterDefinition<BsonDocument>(BsonDocument.Parse(filter));
+
+        var update = new BsonDocument("$set", BsonDocument.Parse(json));
+
         var result = await collection.UpdateManyAsync(filterDoc, update);
         return result.ModifiedCount;
     }

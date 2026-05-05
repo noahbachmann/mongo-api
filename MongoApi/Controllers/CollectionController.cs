@@ -127,16 +127,16 @@ public class CollectionController(MongoDBService dbService) : ControllerBase
     /// <summary>
     /// Update a document by ID
     /// </summary>
-    [HttpPatch("{name}/documents/{id}")]
+    [HttpPatch("{name}/documents/single")]
     public async Task<IActionResult> UpdateDocument(
         string name,
-        string id,
         [FromBody] object json,
+        [FromQuery] string? filter = null,
         [FromQuery] string? db = null)
     {
         try
         {
-            var modified = await _mongoDBService.UpdateDocumentAsync(name, id, json.ToString()!, db);
+            var modified = await _mongoDBService.UpdateDocumentAsync(name, json.ToString()!, filter?.ToString(), db);
             if (modified == 0) return NotFound(new { error = "Document not found." });
             return Ok(new { message = "Document updated.", modifiedCount = modified });
         }
