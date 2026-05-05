@@ -1,15 +1,18 @@
 <script setup lang="ts">
-	type Command =
-		| { kind: 'show-dbs' }
-		| { kind: 'show-collections' }
-		| { kind: 'create-db'; dbName: string; firstCollection: string }
-		| { kind: 'drop-db'; dbName: string }
-		| { kind: 'create-collection'; name: string }
-		| { kind: 'drop-collection'; collection: string }
-		| { kind: 'show-documents'; collection: string }
-		| { kind: 'insert-document'; collection: string }
-		| { kind: 'update-document'; collection: string; id: string }
-		| { kind: 'delete-document'; collection: string; id: string }
+	type CommandKind =
+		| 'show-dbs'
+		| 'show-collections'
+		| 'create-db'
+		| 'drop-db'
+		| 'create-collection'
+		| 'drop-collection'
+		| 'show-documents'
+		| 'insert-document'
+		| 'update-document'
+		| 'update-documents'
+		| 'delete-document'
+
+	type Command = { kind: CommandKind; db?: string; collection?: string; id?: string }
 
 	type DocItem = { id: string | null; json: string }
 
@@ -18,6 +21,32 @@
 		output: string
 		error?: boolean
 		documents?: { collection: string; items: DocItem[] }
+	}
+
+	type Ctx = {
+		cmd: Command
+		currentDb: Ref<string>
+		jsonInput: Ref<string>
+		docsFilter: Ref<string>
+		docsLimit: Ref<number>
+		docsSkip: Ref<number>
+	}
+
+	type RunCtx = Ctx & {
+		api: ReturnType<typeof useMongoApi>
+		entry: HistoryEntry
+		loadDocsInto: (col: string, e: HistoryEntry) => Promise<void>
+	}
+
+	type CommandSpec = {
+		preview: (ctx: Ctx) => string
+		run: (ctx: RunCtx) => Promise<unknown>
+		needsCurrentDb?: boolean
+		danger?: boolean
+		validate?: (ctx: Ctx) => boolean
+		refresh?: 'dbs' | 'collections' | 'docs'
+		keepJsonOnSubmit?: boolean
+		onSuccess?: (ctx: RunCtx) => void
 	}
 
 	const api = useMongoApi()
@@ -33,9 +62,8 @@
 
 	// per-control input state
 	const newDbName = ref('')
-	const newDbFirstCollection = ref('')
+	const newCollectionInput = ref('')
 	const dropDbTarget = ref('')
-	const newCollectionName = ref('')
 	const dropCollectionTarget = ref('')
 	const docsCollection = ref('')
 	const docsFilter = ref('')
@@ -95,55 +123,130 @@
 		return flat.length > max ? flat.slice(0, max - 1) + '…' : flat
 	}
 
-	const dangerKinds = new Set<Command['kind']>(['drop-db', 'drop-collection', 'delete-document'])
-	const isDangerCommand = computed(() => Boolean(command.value && dangerKinds.has(command.value.kind)))
+	function parseJsonInput(): unknown {
+		try {
+			return JSON.parse(jsonInput.value)
+		} catch (err) {
+			throw new Error(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`)
+		}
+	}
+
+	const commands: Record<CommandKind, CommandSpec> = {
+		'show-dbs': {
+			needsCurrentDb: false,
+			preview: () => 'show dbs',
+			run: ({ api }) => api.listDbs(),
+			refresh: 'dbs',
+		},
+		'show-collections': {
+			preview: ({ currentDb }) => `show collections${currentDb.value ? ` --db=${currentDb.value}` : ''}`,
+			run: ({ api }) => api.listCollections(),
+			refresh: 'collections',
+		},
+		'create-db': {
+			needsCurrentDb: false,
+			preview: ({ cmd }) => `use ${cmd.db}; db.createCollection("${cmd.collection}")`,
+			run: ({ api, cmd }) => api.createDbWithCollection(cmd.db!, cmd.collection!),
+			validate: ({ cmd }) => Boolean(cmd.db && cmd.collection),
+			refresh: 'dbs',
+			onSuccess: ({ cmd, currentDb }) => {
+				currentDb.value = cmd.db!
+				newDbName.value = ''
+				newCollectionInput.value = ''
+			},
+		},
+		'drop-db': {
+			needsCurrentDb: false,
+			danger: true,
+			preview: ({ cmd }) => `use ${cmd.db}; db.dropDatabase()`,
+			run: ({ api, cmd }) => api.dropDb(cmd.db!),
+			validate: ({ cmd }) => Boolean(cmd.db),
+			refresh: 'dbs',
+			onSuccess: ({ cmd, currentDb }) => {
+				if (currentDb.value === cmd.db) currentDb.value = ''
+			},
+		},
+		'create-collection': {
+			preview: ({ cmd }) => `db.createCollection("${cmd.collection}")`,
+			run: ({ api, cmd }) => api.createCollection(cmd.collection!),
+			refresh: 'collections',
+			onSuccess: () => {
+				newCollectionInput.value = ''
+			},
+		},
+		'drop-collection': {
+			danger: true,
+			preview: ({ cmd }) => `db.dropCollection("${cmd.collection}")`,
+			run: ({ api, cmd }) => api.dropCollection(cmd.collection!),
+			refresh: 'collections',
+		},
+		'show-documents': {
+			preview: ({ cmd, docsFilter, docsSkip, docsLimit }) =>
+				`db.${cmd.collection}.find(${docsFilter.value || '{}'}).skip(${docsSkip.value}).limit(${docsLimit.value})`,
+			run: async ({ cmd, entry, loadDocsInto }) => {
+				await loadDocsInto(cmd.collection!, entry)
+				return entry.documents?.items ?? []
+			},
+		},
+		'insert-document': {
+			preview: ({ cmd, jsonInput }) => `db.${cmd.collection}.insertOne(${snippet(jsonInput.value)})`,
+			run: ({ api, cmd }) => api.insertDocument(cmd.collection!, parseJsonInput()),
+			validate: ({ jsonInput }) => jsonInput.value.trim().length > 0,
+			refresh: 'docs',
+			keepJsonOnSubmit: true,
+			onSuccess: () => {
+				jsonInput.value = ''
+			},
+		},
+		'update-document': {
+			preview: ({ cmd, jsonInput }) =>
+				`db.${cmd.collection}.updateOne({_id: "${cmd.id}"}, ${snippet(jsonInput.value)})`,
+			run: ({ api, cmd }) => api.updateDocument(cmd.collection!, cmd.id!, parseJsonInput()),
+			validate: ({ cmd, jsonInput }) => Boolean(cmd.id) && jsonInput.value.trim().length > 0,
+			refresh: 'docs',
+			keepJsonOnSubmit: true,
+			onSuccess: () => {
+				jsonInput.value = ''
+			},
+		},
+		'update-documents': {
+			preview: ({ cmd, docsFilter, jsonInput }) =>
+				`db.${cmd.collection}.updateMany(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
+			run: ({ api, cmd, docsFilter }) => api.updateDocuments(cmd.collection!, docsFilter.value || undefined),
+			validate: ({ cmd, jsonInput }) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
+			refresh: 'docs',
+			keepJsonOnSubmit: true,
+			onSuccess: () => {
+				jsonInput.value = ''
+			},
+		},
+		'delete-document': {
+			danger: true,
+			preview: ({ cmd }) => `db.${cmd.collection}.deleteOne({_id: "${cmd.id}"})`,
+			run: ({ api, cmd }) => api.deleteDocument(cmd.collection!, cmd.id!),
+			validate: ({ cmd }) => Boolean(cmd.collection && cmd.id),
+			refresh: 'docs',
+		},
+	}
+
+	function makeCtx(cmd: Command): Ctx {
+		return { cmd, currentDb, jsonInput, docsFilter, docsLimit, docsSkip }
+	}
 
 	const commandPreview = computed(() => {
 		const c = command.value
-		if (!c) return ''
-		const dbPart = currentDb.value || '<db>'
-		switch (c.kind) {
-			case 'show-dbs':
-				return 'show dbs'
-			case 'show-collections':
-				return `show collections${currentDb.value ? ` --db=${currentDb.value}` : ''}`
-			case 'create-db':
-				return `use ${c.dbName}; db.createCollection("${c.firstCollection}")`
-			case 'drop-db':
-				return `use ${c.dbName}; db.dropDatabase()`
-			case 'create-collection':
-				return `db.createCollection("${c.name}")`
-			case 'drop-collection':
-				return `db.dropCollection("${c.collection}")`
-			case 'show-documents':
-				return `db.${c.collection}.find(${docsFilter.value || '{}'}).skip(${docsSkip.value}).limit(${docsLimit.value})`
-			case 'insert-document':
-				return `db.${c.collection}.insertOne(${snippet(jsonInput.value)})`
-			case 'update-document':
-				return `db.${c.collection}.updateOne({_id: "${c.id}"}, ${snippet(jsonInput.value)})`
-			case 'delete-document':
-				return `db.${c.collection}.deleteOne({_id: "${c.id}"})`
-		}
+		return c ? commands[c.kind].preview(makeCtx(c)) : ''
 	})
+
+	const isDangerCommand = computed(() => Boolean(command.value && commands[command.value.kind].danger))
 
 	const canSubmit = computed(() => {
 		const c = command.value
 		if (!c) return false
-		if (c.kind === 'show-dbs') return true
-		if (c.kind === 'create-db') return Boolean(c.dbName && c.firstCollection)
-		if (c.kind === 'drop-db') return Boolean(c.dbName)
-		if (!currentDb.value) return false
-		if (c.kind === 'insert-document' || c.kind === 'update-document') return jsonInput.value.trim().length > 0
-		return true
+		const spec = commands[c.kind]
+		if (spec.needsCurrentDb !== false && !currentDb.value) return false
+		return spec.validate ? spec.validate(makeCtx(c)) : true
 	})
-
-	function parseJsonInput(): { ok: true; value: unknown } | { ok: false; error: string } {
-		try {
-			return { ok: true, value: JSON.parse(jsonInput.value) }
-		} catch (err) {
-			return { ok: false, error: err instanceof Error ? err.message : String(err) }
-		}
-	}
 
 	async function refreshDbs() {
 		try {
@@ -196,57 +299,28 @@
 		scrollToBottom()
 	}
 
-	function stage(c: Command) {
-		command.value = c
-		if (c.kind !== 'drop-collection') dropCollectionTarget.value = ''
-		if (c.kind !== 'drop-db') dropDbTarget.value = ''
-	}
-
-	function stageCreateDb() {
-		if (!newDbName.value || !newDbFirstCollection.value) return
-		stage({ kind: 'create-db', dbName: newDbName.value, firstCollection: newDbFirstCollection.value })
-	}
-	function stageCreateCollection() {
-		if (!newCollectionName.value) return
-		stage({ kind: 'create-collection', name: newCollectionName.value })
-	}
-	function stageShowDocuments() {
-		if (!docsCollection.value) return
-		stage({ kind: 'show-documents', collection: docsCollection.value })
-	}
-	function stageInsertDocument() {
-		if (!docsCollection.value || !jsonInput.value.trim()) return
-		stage({ kind: 'insert-document', collection: docsCollection.value })
-	}
-	function onPickDropDb() {
-		if (dropDbTarget.value) command.value = { kind: 'drop-db', dbName: dropDbTarget.value }
-	}
-	function onPickDropCollection() {
-		if (dropCollectionTarget.value)
-			command.value = { kind: 'drop-collection', collection: dropCollectionTarget.value }
+	function stage(kind: CommandKind, extras: Omit<Command, 'kind'> = {}) {
+		command.value = { kind, ...extras }
+		if (kind !== 'drop-collection') dropCollectionTarget.value = ''
+		if (kind !== 'drop-db') dropDbTarget.value = ''
 	}
 
 	function onEditDoc(collection: string, doc: DocItem) {
 		if (!doc.id) return
 		jsonInput.value = doc.json
-		stage({ kind: 'update-document', collection, id: doc.id })
+		stage('update-document', { collection, id: doc.id })
 		nextTick(() => jsonInputEl.value?.focus())
-	}
-	function onDeleteDoc(collection: string, doc: DocItem) {
-		if (!doc.id) return
-		stage({ kind: 'delete-document', collection, id: doc.id })
 	}
 
 	async function submit() {
 		if (!canSubmit.value || running.value || !command.value) return
-		const c = command.value
-		const cmd = commandPreview.value
+		const cmd = command.value
+		const spec = commands[cmd.kind]
+		const cmdPreview = commandPreview.value
 		running.value = true
 
-		const entry: HistoryEntry = { cmd, output: '…' }
+		const entry: HistoryEntry = { cmd: cmdPreview, output: '…' }
 		history.value.push(entry)
-		// keep insert/update kinds non-cleared so jsonInput stays meaningful until submit succeeds
-		const clearAfter = c.kind !== 'insert-document' && c.kind !== 'update-document'
 		command.value = null
 		dropDbTarget.value = ''
 		dropCollectionTarget.value = ''
@@ -254,74 +328,17 @@
 		scrollToBottom()
 
 		try {
-			let result: unknown = undefined
-			let postRefreshDocs: string | null = null
-
-			switch (c.kind) {
-				case 'show-dbs':
-					result = await api.listDbs()
-					dbs.value = normalizeNames(result)
-					break
-				case 'show-collections':
-					result = await api.listCollections()
-					collections.value = normalizeNames(result)
-					break
-				case 'create-db':
-					result = await api.createDbWithCollection(c.dbName, c.firstCollection)
-					await refreshDbs()
-					currentDb.value = c.dbName
-					newDbName.value = ''
-					newDbFirstCollection.value = ''
-					break
-				case 'drop-db':
-					result = await api.dropDb(c.dbName)
-					if (currentDb.value === c.dbName) currentDb.value = ''
-					await refreshDbs()
-					break
-				case 'create-collection':
-					result = await api.createCollection(c.name)
-					await refreshCollections()
-					newCollectionName.value = ''
-					break
-				case 'drop-collection':
-					result = await api.dropCollection(c.collection)
-					await refreshCollections()
-					break
-				case 'show-documents':
-					await loadDocsInto(c.collection, entry)
-					result = entry.documents?.items ?? []
-					break
-				case 'insert-document': {
-					const parsed = parseJsonInput()
-					if (!parsed.ok) throw new Error(`Invalid JSON: ${parsed.error}`)
-					result = await api.insertDocument(c.collection, parsed.value)
-					jsonInput.value = ''
-					postRefreshDocs = c.collection
-					break
-				}
-				case 'update-document': {
-					const parsed = parseJsonInput()
-					if (!parsed.ok) throw new Error(`Invalid JSON: ${parsed.error}`)
-					result = await api.updateDocument(c.collection, c.id, parsed.value)
-					jsonInput.value = ''
-					postRefreshDocs = c.collection
-					break
-				}
-				case 'delete-document':
-					result = await api.deleteDocument(c.collection, c.id)
-					postRefreshDocs = c.collection
-					break
-			}
-
+			const runCtx: RunCtx = { ...makeCtx(cmd), api, entry, loadDocsInto }
+			const result = await spec.run(runCtx)
 			if (!entry.documents) entry.output = formatOutput(result)
-			if (postRefreshDocs) await appendDocsRefresh(postRefreshDocs)
+			spec.onSuccess?.(runCtx)
+			if (spec.refresh === 'dbs') await refreshDbs()
+			if (spec.refresh === 'collections') await refreshCollections()
+			if (spec.refresh === 'docs') await appendDocsRefresh(cmd.collection!)
 		} catch (err: unknown) {
 			entry.output = err instanceof Error ? err.message : String(err)
 			entry.error = true
-			if (!clearAfter) {
-				// restore the staged command on failure so the user can fix and retry
-				command.value = c
-			}
+			if (spec.keepJsonOnSubmit) command.value = cmd
 		} finally {
 			running.value = false
 			await nextTick()
@@ -365,7 +382,7 @@
 </script>
 
 <template>
-	<div class="min-h-screen bg-surface flex items-center justify-center p-0 sm:p-12 md:p-24">
+	<div class="min-h-screen bg-gray-700 flex items-center justify-center p-0 sm:p-12 md:p-24">
 		<div
 			class="w-full max-w-4xl sm:rounded-md border border-secondary/15 bg-secondary text-surface font-mono shadow-lg overflow-hidden">
 			<!-- header / db selector -->
@@ -375,20 +392,6 @@
 					<span class="size-10 rounded-full bg-bright-primary/70" />
 					<span class="text-surface/60 ml-8">mongo-cli</span>
 				</div>
-				<label class="flex items-center gap-8">
-					<span class="text-surface/60">current database:</span>
-					<select
-						v-model="currentDb"
-						class="input-cli">
-						<option value="">— select —</option>
-						<option
-							v-for="d in dbs"
-							:key="d"
-							:value="d">
-							{{ d }}
-						</option>
-					</select>
-				</label>
 			</div>
 
 			<!-- terminal body -->
@@ -438,7 +441,10 @@
 										type="button"
 										class="btn-inline"
 										:disabled="!doc.id"
-										@click="onDeleteDoc(entry.documents!.collection, doc)">
+										@click="
+											doc.id &&
+											stage('delete-document', { collection: entry.documents!.collection, id: doc.id })
+										">
 										del
 									</button>
 								</div>
@@ -464,37 +470,37 @@
 					<button
 						type="button"
 						class="btn btn-cmd"
-						@click="stage({ kind: 'show-dbs' })">
+						@click="stage('show-dbs')">
 						show dbs
 					</button>
 
-					<div class="flex items-center gap-4 px-8 py-4 rounded-sm border border-surface/20">
+					<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
 						<span class="text-surface/70 text-sm">create</span>
 						<input
 							v-model="newDbName"
 							placeholder="db name"
 							class="input-cli w-100"
-							@keydown.enter.prevent="stageCreateDb" />
+							@keydown.enter.prevent="stage('create-db', { db: newDbName, collection: newCollectionInput })" />
 						<input
-							v-model="newDbFirstCollection"
-							placeholder="first collection"
-							class="input-cli w-100"
-							@keydown.enter.prevent="stageCreateDb" />
+							v-model="newCollectionInput"
+							placeholder="opt:collection"
+							class="input-cli w-120"
+							@keydown.enter.prevent="stage('create-db', { db: newDbName, collection: newCollectionInput })" />
 						<button
 							type="button"
 							class="btn btn-cmd"
-							:disabled="!newDbName || !newDbFirstCollection"
-							@click="stageCreateDb">
+							:disabled="!newDbName || !newCollectionInput"
+							@click="stage('create-db', { db: newDbName, collection: newCollectionInput })">
 							stage
 						</button>
 					</div>
 
-					<div class="flex items-center gap-4 px-8 py-4 rounded-sm border border-surface/20">
-						<span class="text-surface/70 text-sm">drop</span>
+					<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
+						<span class="text-surface/70 text-sm">delete</span>
 						<select
 							v-model="dropDbTarget"
 							class="input-cli"
-							@change="onPickDropDb">
+							@change="dropDbTarget && stage('drop-db', { db: dropDbTarget })">
 							<option value="">— pick —</option>
 							<option
 								v-for="d in dbs"
@@ -506,45 +512,62 @@
 					</div>
 				</div>
 
+				<!-- Separator: DB → Collection -->
+				<label class="flex items-center gap-8">
+					<div class="flex-1 border-t border-surface/20" />
+					<span class="text-surface/40 uppercase">current database:</span>
+					<select
+						v-model="currentDb"
+						class="input-cli">
+						<option value="">— select db —</option>
+						<option
+							v-for="d in dbs"
+							:key="d"
+							:value="d">
+							{{ d }}
+						</option>
+					</select>
+				</label>
+
 				<!-- COLLECTION row -->
 				<div
 					class="flex flex-wrap items-center gap-8"
 					:class="!currentDb ? 'opacity-50' : ''">
-					<span class="text-surface/40 text-xs uppercase tracking-wide w-80">collection</span>
+					<span class="text-surface/40 text-xs uppercase tracking-wide w-80">Collection</span>
 
 					<button
 						type="button"
 						class="btn btn-cmd"
 						:disabled="!currentDb"
 						:title="!currentDb ? 'select a db first' : ''"
-						@click="stage({ kind: 'show-collections' })">
+						@click="stage('show-collections')">
 						show collections
 					</button>
 
-					<div class="flex items-center gap-4 px-8 py-4 rounded-sm border border-surface/20">
+					<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
 						<span class="text-surface/70 text-sm">create</span>
 						<input
-							v-model="newCollectionName"
+							v-model="newCollectionInput"
 							:disabled="!currentDb"
 							placeholder="collection name"
 							class="input-cli w-140"
-							@keydown.enter.prevent="stageCreateCollection" />
+							@keydown.enter.prevent="stage('create-collection', { collection: newCollectionInput })" />
 						<button
 							type="button"
 							class="btn btn-cmd"
-							:disabled="!currentDb || !newCollectionName"
-							@click="stageCreateCollection">
+							:disabled="!currentDb || !newCollectionInput"
+							@click="stage('create-collection', { collection: newCollectionInput })">
 							stage
 						</button>
 					</div>
 
-					<div class="flex items-center gap-4 px-8 py-4 rounded-sm border border-surface/20">
-						<span class="text-surface/70 text-sm">drop</span>
+					<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
+						<span class="text-surface/70 text-sm">delete</span>
 						<select
 							v-model="dropCollectionTarget"
 							:disabled="!currentDb"
 							class="input-cli"
-							@change="onPickDropCollection">
+							@change="dropCollectionTarget && stage('drop-collection', { collection: dropCollectionTarget })">
 							<option value="">— pick —</option>
 							<option
 								v-for="c in collections"
@@ -556,71 +579,88 @@
 					</div>
 				</div>
 
-				<!-- DOCUMENT row -->
-				<div
-					class="flex flex-wrap items-center gap-8"
-					:class="!currentDb ? 'opacity-50' : ''">
-					<span class="text-surface/40 text-xs uppercase tracking-wide w-80">doc</span>
+				<!-- Separator: Collection → Document -->
+				<label class="flex items-center gap-8">
+					<div class="flex-1 border-t border-surface/20" />
+					<span class="text-surface/40 uppercase">current collection:</span>
+					<select
+						v-model="docsCollection"
+						:disabled="!currentDb || !collections.length"
+						class="input-cli disabled:opacity-40">
+						<option value="">— select coll —</option>
+						<option
+							v-for="c in collections"
+							:key="c"
+							:value="c">
+							{{ c }}
+						</option>
+					</select>
+				</label>
 
-					<div class="flex items-center gap-4 px-8 py-4 rounded-sm border border-surface/20">
-						<span class="text-surface/70 text-sm">collection</span>
-						<select
-							v-model="docsCollection"
-							:disabled="!currentDb || !collections.length"
-							class="input-cli">
-							<option value="">— pick —</option>
-							<option
-								v-for="c in collections"
-								:key="c"
-								:value="c">
-								{{ c }}
-							</option>
-						</select>
+				<!-- DOCUMENT section -->
+				<div
+					class="flex flex-col gap-8"
+					:class="!currentDb ? 'opacity-50' : ''">
+					<span class="text-surface/40 text-xs uppercase tracking-wide">Document</span>
+
+					<!-- limit & skip -->
+					<div class="flex items-center gap-8">
+						<label class="flex items-center gap-4 text-surface/70 text-sm">
+							limit:
+							<input
+								v-model.number="docsLimit"
+								type="number"
+								min="1"
+								class="input-cli w-60" />
+						</label>
+						<label class="flex items-center gap-4 text-surface/70 text-sm">
+							skip:
+							<input
+								v-model.number="docsSkip"
+								type="number"
+								min="0"
+								class="input-cli w-60" />
+						</label>
 					</div>
 
-					<div class="flex items-center gap-4 px-8 py-4 rounded-sm border border-surface/20">
-						<span class="text-surface/70 text-sm">show</span>
-						<input
+					<!-- filter textarea + stage find -->
+					<div class="flex items-stretch gap-8">
+						<span class="text-surface/70 text-sm self-start pt-6">filter:</span>
+						<textarea
 							v-model="docsFilter"
-							placeholder="filter (optional, JSON)"
-							class="input-cli w-180" />
-						<input
-							v-model.number="docsLimit"
-							type="number"
-							min="1"
-							class="input-cli w-60" />
-						<input
-							v-model.number="docsSkip"
-							type="number"
-							min="0"
-							class="input-cli w-60" />
+							rows="2"
+							placeholder='{"field": "value"}'
+							class="flex-1 bg-secondary text-surface border border-surface/20 rounded-sm px-8 py-6 text-xs font-mono focus:outline-none focus:border-bright-primary" />
 						<button
 							type="button"
-							class="btn btn-cmd"
+							class="btn btn-cmd self-start"
 							:disabled="!currentDb || !docsCollection"
-							@click="stageShowDocuments">
-							stage
+							@click="stage('show-documents', { collection: docsCollection })">
+							stage find
 						</button>
 					</div>
 
-					<button
-						type="button"
-						class="btn btn-cmd"
-						:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
-						@click="stageInsertDocument">
-						insert (uses JSON below)
-					</button>
+					<!-- input textarea + stage insert -->
+					<div class="flex items-stretch gap-8">
+						<span class="text-surface/70 text-sm self-start pt-6">input:</span>
+						<textarea
+							ref="jsonInputEl"
+							v-model="jsonInput"
+							rows="3"
+							placeholder='{"name": "alpha"}'
+							class="flex-1 bg-secondary text-surface border border-surface/20 rounded-sm px-8 py-6 text-xs font-mono focus:outline-none focus:border-bright-primary" />
+						<button
+							type="button"
+							class="btn btn-cmd self-start"
+							:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
+							@click="stage('insert-document', { collection: docsCollection })">
+							stage insert
+						</button>
+					</div>
 				</div>
 
-				<!-- JSON textarea + submit -->
-				<div class="flex items-stretch gap-8">
-					<textarea
-						ref="jsonInputEl"
-						v-model="jsonInput"
-						rows="3"
-						placeholder='document JSON — e.g. {"name": "alpha"}'
-						class="flex-1 bg-secondary text-surface border border-surface/20 rounded-sm px-8 py-6 text-xs font-mono focus:outline-none focus:border-bright-primary" />
-
+				<!-- submit -->
+				<div class="flex justify-end">
 					<button
 						type="button"
 						class="btn"
