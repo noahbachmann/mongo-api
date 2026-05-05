@@ -281,6 +281,8 @@
 		})
 		entry.output = formatOutput(docs)
 		entry.documents = { collection, items: normalizeDocuments(docs) }
+		// Force reactivity update
+		history.value = [...history.value]
 	}
 
 	async function appendDocsRefresh(collection: string) {
@@ -352,9 +354,16 @@
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && canSubmit.value && !running.value) {
-			e.preventDefault()
-			submit()
+		const target = e.target as HTMLElement
+		const isInForm = target?.matches('input, textarea, select')
+
+		if (e.key === 'Enter') {
+			// If in a form field, let the field's @keydown.enter handle it (stage)
+			// If NOT in a form field, submit the staged command
+			if (canSubmit.value && !running.value && (!isInForm || e.metaKey || e.ctrlKey)) {
+				e.preventDefault()
+				submit()
+			}
 		} else if (e.key === 'Escape' && command.value) {
 			command.value = null
 			dropDbTarget.value = ''
@@ -455,9 +464,22 @@
 				</div>
 
 				<div
-					v-if="commandPreview"
-					class="text-bright-primary">
-					$ {{ commandPreview }}<span class="inline-block animate-pulse ml-2">▌</span>
+					v-if="commandPreview || command"
+					class="flex items-center justify-between gap-8">
+					<span
+						v-if="commandPreview"
+						class="text-bright-primary">
+						$ {{ commandPreview }}<span class="inline-block animate-pulse ml-2">▌</span>
+					</span>
+					<span v-else />
+					<button
+						type="button"
+						class="btn shrink-0"
+						:class="isDangerCommand ? 'btn-danger' : 'btn-submit'"
+						:disabled="!canSubmit || running"
+						@click="submit">
+						{{ running ? 'running…' : 'submit' }}
+					</button>
 				</div>
 			</div>
 
@@ -478,12 +500,12 @@
 						<span class="text-surface/70 text-sm">create</span>
 						<input
 							v-model="newDbName"
-							placeholder="db name"
+							placeholder="database"
 							class="input-cli w-100"
 							@keydown.enter.prevent="stage('create-db', { db: newDbName, collection: newCollectionInput })" />
 						<input
 							v-model="newCollectionInput"
-							placeholder="opt:collection"
+							placeholder="collection"
 							class="input-cli w-120"
 							@keydown.enter.prevent="stage('create-db', { db: newDbName, collection: newCollectionInput })" />
 						<button
@@ -549,7 +571,7 @@
 						<input
 							v-model="newCollectionInput"
 							:disabled="!currentDb"
-							placeholder="collection name"
+							placeholder="collection"
 							class="input-cli w-140"
 							@keydown.enter.prevent="stage('create-collection', { collection: newCollectionInput })" />
 						<button
@@ -600,7 +622,7 @@
 				<!-- DOCUMENT section -->
 				<div
 					class="flex flex-col gap-8"
-					:class="!currentDb ? 'opacity-50' : ''">
+					:class="!docsCollection ? 'opacity-50' : ''">
 					<span class="text-surface/40 text-xs uppercase tracking-wide">Document</span>
 
 					<!-- limit & skip -->
@@ -609,6 +631,7 @@
 							limit:
 							<input
 								v-model.number="docsLimit"
+								:disabled="!docsCollection"
 								type="number"
 								min="1"
 								class="input-cli w-60" />
@@ -617,58 +640,66 @@
 							skip:
 							<input
 								v-model.number="docsSkip"
+								:disabled="!docsCollection"
 								type="number"
 								min="0"
 								class="input-cli w-60" />
 						</label>
 					</div>
 
-					<!-- filter textarea + stage find -->
-					<div class="flex items-stretch gap-8">
-						<span class="text-surface/70 text-sm self-start pt-6">filter:</span>
+					<!-- filter + input grid -->
+					<div class="grid grid-cols-[1fr_6fr_3fr] gap-8 items-start">
+						<!-- Row 1: filter -->
+						<span class="text-surface/70 text-sm pt-6">filter:</span>
 						<textarea
 							v-model="docsFilter"
+							:disabled="!docsCollection"
 							rows="2"
 							placeholder='{"field": "value"}'
-							class="flex-1 bg-secondary text-surface border border-surface/20 rounded-sm px-8 py-6 text-xs font-mono focus:outline-none focus:border-bright-primary" />
-						<button
-							type="button"
-							class="btn btn-cmd self-start"
-							:disabled="!currentDb || !docsCollection"
-							@click="stage('show-documents', { collection: docsCollection })">
-							stage find
-						</button>
-					</div>
+							class="bg-secondary text-surface border border-surface/20 rounded-sm px-8 py-6 text-xs font-mono focus:outline-none focus:border-bright-primary disabled:opacity-40 disabled:cursor-not-allowed" />
+						<div class="flex flex-col">
+							<button
+								type="button"
+								class="btn btn-cmd"
+								:disabled="!currentDb || !docsCollection"
+								@click="stage('show-documents', { collection: docsCollection })">
+								find
+							</button>
+						</div>
 
-					<!-- input textarea + stage insert -->
-					<div class="flex items-stretch gap-8">
-						<span class="text-surface/70 text-sm self-start pt-6">input:</span>
+						<!-- Row 2: input -->
+						<span class="text-surface/70 text-sm pt-6">input:</span>
 						<textarea
 							ref="jsonInputEl"
 							v-model="jsonInput"
+							:disabled="!docsCollection"
 							rows="3"
 							placeholder='{"name": "alpha"}'
-							class="flex-1 bg-secondary text-surface border border-surface/20 rounded-sm px-8 py-6 text-xs font-mono focus:outline-none focus:border-bright-primary" />
-						<button
-							type="button"
-							class="btn btn-cmd self-start"
-							:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
-							@click="stage('insert-document', { collection: docsCollection })">
-							stage insert
-						</button>
+							class="bg-secondary text-surface border border-surface/20 rounded-sm px-8 py-6 text-xs font-mono focus:outline-none focus:border-bright-primary disabled:opacity-40 disabled:cursor-not-allowed" />
+						<div class="flex flex-col gap-4">
+							<button
+								type="button"
+								class="btn btn-cmd"
+								:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
+								@click="stage('insert-document', { collection: docsCollection })">
+								insert
+							</button>
+							<button
+								type="button"
+								class="btn btn-cmd"
+								:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
+								@click="stage('update-document', { collection: docsCollection })">
+								updateOne
+							</button>
+							<button
+								type="button"
+								class="btn btn-cmd"
+								:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
+								@click="stage('update-documents', { collection: docsCollection })">
+								updateMany
+							</button>
+						</div>
 					</div>
-				</div>
-
-				<!-- submit -->
-				<div class="flex justify-end">
-					<button
-						type="button"
-						class="btn"
-						:class="isDangerCommand ? 'btn-danger' : 'btn-submit'"
-						:disabled="!canSubmit || running"
-						@click="submit">
-						{{ running ? 'running…' : 'submit' }}
-					</button>
 				</div>
 			</div>
 		</div>
