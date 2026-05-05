@@ -127,7 +127,7 @@ public class CollectionController(MongoDBService dbService) : ControllerBase
     /// <summary>
     /// Update a document by ID
     /// </summary>
-    [HttpPut("{name}/documents/{id}")]
+    [HttpPatch("{name}/documents/{id}")]
     public async Task<IActionResult> UpdateDocument(
         string name,
         string id,
