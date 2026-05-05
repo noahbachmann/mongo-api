@@ -3,60 +3,60 @@ using MongoDB.Driver;
 
 namespace MongoApi.Services;
 
-public class DatabaseService(IMongoClient client, string defaultDatabase)
+public class MongoDBService(IMongoClient mongoClient, string defaultDatabase)
 {
-    private readonly IMongoClient _client = client;
+    private readonly IMongoClient _mongoClient = mongoClient;
     private readonly string _defaultDatabase = defaultDatabase;
 
-    // ── Databases ──
+    // Databases
 
     public async Task<List<string>> ListDatabasesAsync()
     {
-        var result = await _client.ListDatabaseNamesAsync();
+        var result = await _mongoClient.ListDatabaseNamesAsync();
         return await result.ToListAsync();
     }
 
     public async Task<BsonDocument> GetDatabaseStatsAsync(string dbName)
     {
-        var db = _client.GetDatabase(dbName);
+        var db = _mongoClient.GetDatabase(dbName);
         var command = new BsonDocument("dbStats", 1);
         return await db.RunCommandAsync<BsonDocument>(command);
     }
 
     public async Task DropDatabaseAsync(string dbName)
     {
-        await _client.DropDatabaseAsync(dbName);
+        await _mongoClient.DropDatabaseAsync(dbName);
     }
 
-    // ── Collections ──
+    // Collections
 
     public async Task<List<string>> ListCollectionsAsync(string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var result = await db.ListCollectionNamesAsync();
         return await result.ToListAsync();
     }
 
     public async Task CreateCollectionAsync(string collectionName, string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         await db.CreateCollectionAsync(collectionName);
     }
 
     public async Task DropCollectionAsync(string collectionName, string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         await db.DropCollectionAsync(collectionName);
     }
 
     public async Task<BsonDocument> GetCollectionStatsAsync(string collectionName, string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var command = new BsonDocument("collStats", collectionName);
         return await db.RunCommandAsync<BsonDocument>(command);
     }
 
-    // ── Documents ──
+    // Documents 
 
     public async Task<List<BsonDocument>> GetDocumentsAsync(
         string collectionName,
@@ -65,7 +65,7 @@ public class DatabaseService(IMongoClient client, string defaultDatabase)
         int limit = 50,
         int skip = 0)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var collection = db.GetCollection<BsonDocument>(collectionName);
 
         var filterDoc = string.IsNullOrEmpty(filter)
@@ -84,7 +84,7 @@ public class DatabaseService(IMongoClient client, string defaultDatabase)
         string id,
         string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var collection = db.GetCollection<BsonDocument>(collectionName);
 
         var filter = Builders<BsonDocument>.Filter.Eq("_id", ObjectId.Parse(id));
@@ -96,7 +96,7 @@ public class DatabaseService(IMongoClient client, string defaultDatabase)
         string json,
         string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var collection = db.GetCollection<BsonDocument>(collectionName);
 
         var doc = BsonDocument.Parse(json);
@@ -110,12 +110,30 @@ public class DatabaseService(IMongoClient client, string defaultDatabase)
         string json,
         string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var collection = db.GetCollection<BsonDocument>(collectionName);
 
         var filter = Builders<BsonDocument>.Filter.Eq("_id", ObjectId.Parse(id));
         var update = BsonDocument.Parse(json);
-        var result = await collection.ReplaceOneAsync(filter, update);
+        var result = await collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount;
+    }
+
+    public async Task<long> UpdateDocumentsAsync(
+        string collectionName,
+        string json,
+        string? filter,
+        string? dbName = null)
+    {
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
+        var collection = db.GetCollection<BsonDocument>(collectionName);
+
+        var filterDoc = string.IsNullOrEmpty(filter)
+            ? FilterDefinition<BsonDocument>.Empty
+            : new BsonDocumentFilterDefinition<BsonDocument>(BsonDocument.Parse(filter));
+
+        var update = BsonDocument.Parse(json);
+        var result = await collection.UpdateManyAsync(filterDoc, update);
         return result.ModifiedCount;
     }
 
@@ -124,7 +142,7 @@ public class DatabaseService(IMongoClient client, string defaultDatabase)
         string id,
         string? dbName = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var collection = db.GetCollection<BsonDocument>(collectionName);
 
         var filter = Builders<BsonDocument>.Filter.Eq("_id", ObjectId.Parse(id));
@@ -137,7 +155,7 @@ public class DatabaseService(IMongoClient client, string defaultDatabase)
         string? dbName = null,
         string? filter = null)
     {
-        var db = _client.GetDatabase(dbName ?? _defaultDatabase);
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
         var collection = db.GetCollection<BsonDocument>(collectionName);
 
         var filterDoc = string.IsNullOrEmpty(filter)

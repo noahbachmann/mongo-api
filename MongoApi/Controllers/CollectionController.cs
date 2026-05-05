@@ -6,9 +6,9 @@ namespace MongoApi.Controllers;
 
 [ApiController]
 [Route("api/collection")]
-public class CollectionController(DatabaseService dbService) : ControllerBase
+public class CollectionController(MongoDBService dbService) : ControllerBase
 {
-    private readonly DatabaseService _dbService = dbService;
+    private readonly MongoDBService _mongoDBService = dbService;
 
     /// <summary>
     /// List all collections in a database (defaults to configured db)
@@ -16,7 +16,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> ListCollections([FromQuery] string? db = null)
     {
-        var collections = await _dbService.ListCollectionsAsync(db);
+        var collections = await _mongoDBService.ListCollectionsAsync(db);
         return Ok(collections);
     }
 
@@ -26,7 +26,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     [HttpPost("{name}")]
     public async Task<IActionResult> CreateCollection(string name, [FromQuery] string? db = null)
     {
-        await _dbService.CreateCollectionAsync(name, db);
+        await _mongoDBService.CreateCollectionAsync(name, db);
         return Ok(new { message = $"Collection '{name}' created." });
     }
 
@@ -36,7 +36,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     [HttpDelete("{name}")]
     public async Task<IActionResult> DropCollection(string name, [FromQuery] string? db = null)
     {
-        await _dbService.DropCollectionAsync(name, db);
+        await _mongoDBService.DropCollectionAsync(name, db);
         return Ok(new { message = $"Collection '{name}' dropped." });
     }
 
@@ -48,7 +48,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     {
         try
         {
-            var stats = await _dbService.GetCollectionStatsAsync(name, db);
+            var stats = await _mongoDBService.GetCollectionStatsAsync(name, db);
             return Ok(stats.ToJson());
         }
         catch (Exception ex)
@@ -70,8 +70,8 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     {
         try
         {
-            var docs = await _dbService.GetDocumentsAsync(name, db, filter, limit, skip);
-            var count = await _dbService.CountDocumentsAsync(name, db, filter);
+            var docs = await _mongoDBService.GetDocumentsAsync(name, db, filter, limit, skip);
+            var count = await _mongoDBService.CountDocumentsAsync(name, db, filter);
             return Ok(new
             {
                 total = count,
@@ -94,7 +94,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     {
         try
         {
-            var doc = await _dbService.GetDocumentByIdAsync(name, id, db);
+            var doc = await _mongoDBService.GetDocumentByIdAsync(name, id, db);
             if (doc == null) return NotFound(new { error = "Document not found." });
             return Ok(doc.ToJson());
         }
@@ -115,7 +115,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     {
         try
         {
-            var doc = await _dbService.InsertDocumentAsync(name, json.ToString()!, db);
+            var doc = await _mongoDBService.InsertDocumentAsync(name, json.ToString()!, db);
             return Created($"/api/collection/{name}/documents", doc.ToJson());
         }
         catch (Exception ex)
@@ -125,7 +125,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     }
 
     /// <summary>
-    /// Update a document by ID (full replace)
+    /// Update a document by ID
     /// </summary>
     [HttpPut("{name}/documents/{id}")]
     public async Task<IActionResult> UpdateDocument(
@@ -136,7 +136,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     {
         try
         {
-            var modified = await _dbService.UpdateDocumentAsync(name, id, json.ToString()!, db);
+            var modified = await _mongoDBService.UpdateDocumentAsync(name, id, json.ToString()!, db);
             if (modified == 0) return NotFound(new { error = "Document not found." });
             return Ok(new { message = "Document updated.", modifiedCount = modified });
         }
@@ -145,6 +145,27 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+
+    [HttpPatch("{name}/documents")]
+    public async Task<IActionResult> UpdateDocuments(
+        string name,
+        [FromBody] object json,
+        [FromQuery] string? filter = null,
+        [FromQuery] string? db = null)
+    {
+        try
+        {
+            var modified = await _mongoDBService.UpdateDocumentsAsync(name, json.ToString()!, filter?.ToString(), db);
+            if (modified == 0) return NotFound(new { error = "Document not found." });
+            return Ok(new { message = "Document updated.", modifiedCount = modified });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
 
     /// <summary>
     /// Delete a document by ID
@@ -157,7 +178,7 @@ public class CollectionController(DatabaseService dbService) : ControllerBase
     {
         try
         {
-            var deleted = await _dbService.DeleteDocumentAsync(name, id, db);
+            var deleted = await _mongoDBService.DeleteDocumentAsync(name, id, db);
             if (deleted == 0) return NotFound(new { error = "Document not found." });
             return Ok(new { message = "Document deleted.", deletedCount = deleted });
         }

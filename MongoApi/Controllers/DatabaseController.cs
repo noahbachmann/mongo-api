@@ -6,9 +6,9 @@ namespace MongoApi.Controllers;
 
 [ApiController]
 [Route("api/db")]
-public class DatabaseController(DatabaseService dbService) : ControllerBase
+public class DatabaseController(MongoDBService mongoDBService) : ControllerBase
 {
-    private readonly DatabaseService _dbService = dbService;
+    private readonly MongoDBService _mongoDBService = mongoDBService;
 
     /// <summary>
     /// List all databases
@@ -16,7 +16,7 @@ public class DatabaseController(DatabaseService dbService) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> ListDatabases()
     {
-        var databases = await _dbService.ListDatabasesAsync();
+        var databases = await _mongoDBService.ListDatabasesAsync();
         return Ok(databases);
     }
 
@@ -28,7 +28,7 @@ public class DatabaseController(DatabaseService dbService) : ControllerBase
     {
         try
         {
-            var stats = await _dbService.GetDatabaseStatsAsync(dbName);
+            var stats = await _mongoDBService.GetDatabaseStatsAsync(dbName);
             return Ok(stats.ToJson());
         }
         catch (Exception ex)
@@ -43,7 +43,7 @@ public class DatabaseController(DatabaseService dbService) : ControllerBase
     [HttpDelete("{dbName}")]
     public async Task<IActionResult> DropDatabase(string dbName)
     {
-        await _dbService.DropDatabaseAsync(dbName);
+        await _mongoDBService.DropDatabaseAsync(dbName);
         return Ok(new { message = $"Database '{dbName}' dropped." });
     }
 }

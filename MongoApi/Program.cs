@@ -21,11 +21,11 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
     return new MongoClient(settings.ConnectionString);
 });
 
-builder.Services.AddScoped<DatabaseService>(sp =>
+builder.Services.AddScoped<MongoDBService>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<MongoDBSettings>>().Value;
     var client = sp.GetRequiredService<IMongoClient>();
-    return new DatabaseService(client, settings.DatabaseName);
+    return new MongoDBService(client, settings.DatabaseName);
 });
 
 var app = builder.Build();
