@@ -517,8 +517,8 @@
 						</button>
 					</div>
 
-					<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
-						<span class="text-surface/70 text-sm">delete</span>
+					<div class="flex items-center gap-6 px-8 py-10 rounded-sm border border-surface/20">
+						<span class="text-surface/70 text-sm">delete db</span>
 						<select
 							v-model="dropDbTarget"
 							class="input-cli"
@@ -583,8 +583,8 @@
 						</button>
 					</div>
 
-					<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
-						<span class="text-surface/70 text-sm">delete</span>
+					<div class="flex items-center gap-6 px-8 py-10 rounded-sm border border-surface/20">
+						<span class="text-surface/70 text-sm">delete coll</span>
 						<select
 							v-model="dropCollectionTarget"
 							:disabled="!currentDb"
