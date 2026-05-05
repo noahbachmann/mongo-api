@@ -199,25 +199,29 @@
 			},
 		},
 		'update-document': {
-			preview: ({ cmd, jsonInput }) =>
-				`db.${cmd.collection}.updateOne({_id: "${cmd.id}"}, ${snippet(jsonInput.value)})`,
-			run: ({ api, cmd }) => api.updateDocument(cmd.collection!, cmd.id!, parseJsonInput()),
-			validate: ({ cmd, jsonInput }) => Boolean(cmd.id) && jsonInput.value.trim().length > 0,
-			refresh: 'docs',
-			keepJsonOnSubmit: true,
-			onSuccess: () => {
-				jsonInput.value = ''
-			},
-		},
-		'update-documents': {
 			preview: ({ cmd, docsFilter, jsonInput }) =>
-				`db.${cmd.collection}.updateMany(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
-			run: ({ api, cmd, docsFilter }) => api.updateDocuments(cmd.collection!, docsFilter.value || undefined),
+				`db.${cmd.collection}.updateOne(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
+			run: ({ api, cmd, docsFilter }) =>
+				api.updateDocument(cmd.collection!, parseJsonInput(), docsFilter.value || undefined),
 			validate: ({ cmd, jsonInput }) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
 			refresh: 'docs',
 			keepJsonOnSubmit: true,
 			onSuccess: () => {
 				jsonInput.value = ''
+				docsFilter.value = ''
+			},
+		},
+		'update-documents': {
+			preview: ({ cmd, docsFilter, jsonInput }) =>
+				`db.${cmd.collection}.updateMany(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
+			run: ({ api, cmd, docsFilter }) =>
+				api.updateDocuments(cmd.collection!, parseJsonInput(), docsFilter.value || undefined),
+			validate: ({ cmd, jsonInput }) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
+			refresh: 'docs',
+			keepJsonOnSubmit: true,
+			onSuccess: () => {
+				jsonInput.value = ''
+				docsFilter.value = ''
 			},
 		},
 		'delete-document': {
@@ -309,8 +313,16 @@
 
 	function onEditDoc(collection: string, doc: DocItem) {
 		if (!doc.id) return
-		jsonInput.value = doc.json
-		stage('update-document', { collection, id: doc.id })
+		let parsed: Record<string, unknown> = {}
+		try {
+			parsed = JSON.parse(doc.json)
+		} catch {
+			return
+		}
+		const { _id, ...rest } = parsed
+		docsFilter.value = JSON.stringify({ _id })
+		jsonInput.value = JSON.stringify(rest, null, 2)
+		stage('update-document', { collection })
 		nextTick(() => jsonInputEl.value?.focus())
 	}
 

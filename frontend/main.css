@@ -22,26 +22,28 @@
 @layer base {
 }
 
-@utility btn {
-	@apply px-12 py-6 rounded-sm text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
-}
+@layer utility {
+	.btn {
+		@apply px-12 py-6 rounded-sm text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+	}
 
-@utility btn-cmd {
-	@apply bg-secondary border-surface/20 text-surface hover:bg-bright-primary/15 hover:border-bright-primary/50;
-}
+	.btn-cmd {
+		@apply bg-secondary border-surface/20 text-surface hover:bg-bright-primary/15 hover:border-bright-primary/50;
+	}
 
-@utility btn-submit {
-	@apply bg-bright-primary border-bright-primary text-secondary hover:bg-bright-primary/90 font-semibold px-16;
-}
+	.btn-submit {
+		@apply bg-bright-primary border-bright-primary text-secondary hover:bg-bright-primary/90 font-semibold px-16;
+	}
 
-@utility btn-danger {
-	@apply bg-accent border-accent text-secondary hover:bg-accent/90 font-semibold px-16;
-}
+	.btn-danger {
+		@apply bg-accent border-accent text-secondary hover:bg-accent/90 font-semibold px-16;
+	}
 
-@utility btn-inline {
-	@apply px-6 py-2 rounded-sm text-xs border border-surface/20 text-surface/80 hover:bg-bright-primary/15 hover:border-bright-primary/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors;
-}
+	.btn-inline {
+		@apply px-6 py-2 rounded-sm text-xs border border-surface/20 text-surface/80 hover:bg-bright-primary/15 hover:border-bright-primary/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors;
+	}
 
-@utility input-cli {
-	@apply bg-secondary text-surface border border-surface/20 rounded-sm px-6 py-2 text-sm focus:outline-none focus:border-bright-primary disabled:cursor-not-allowed;
+	.input-cli {
+		@apply bg-secondary text-surface border border-surface/20 rounded-sm px-6 py-2 text-sm focus:outline-none focus:border-bright-primary disabled:cursor-not-allowed;
+	}
 }

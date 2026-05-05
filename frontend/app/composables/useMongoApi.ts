@@ -46,12 +46,17 @@ export function useMongoApi() {
 		insertDocument: (name: string, body: unknown) =>
 			request(`${collectionURL(name)}/documents`, { method: 'POST', body }),
 		getDocument: (name: string, id: string) => request(documentURL(name, id)),
-		updateDocument: (name: string, id: string, body: unknown) =>
-			request(documentURL(name, id), { method: 'PATCH', body }),
-		updateDocuments: (name: string, filter?: string) =>
+		updateDocument: (name: string, body: unknown, filter?: string) =>
+			request(`${collectionURL(name)}/documents/single`, {
+				method: 'PATCH',
+				body,
+				query: filter ? { filter } : undefined,
+			}),
+		updateDocuments: (name: string, body: unknown, filter?: string) =>
 			request(`${collectionURL(name)}/documents`, {
 				method: 'PATCH',
-				query: filter as Record<string, unknown> | undefined,
+				body,
+				query: filter ? { filter } : undefined,
 			}),
 		deleteDocument: (name: string, id: string) => request(documentURL(name, id), { method: 'DELETE' }),
 
