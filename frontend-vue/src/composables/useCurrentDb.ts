@@ -1,11 +1,7 @@
-import { ref } from "vue";
+import { ref } from 'vue'
+
+const currentDb = ref('project')
 
 export function useCurrentDb() {
-	const currentDb = ref('project')
-
-   function update(newDb: string){
-      currentDb.value = newDb;
-   }
-
-   return { currentDb, update }
+	return currentDb
 }

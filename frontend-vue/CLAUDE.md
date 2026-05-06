@@ -4,26 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-Nuxt 4 frontend that provides a visual admin UI for a MongoDB instance. It talks over HTTP to a separate **MongoApi** backend (an OpenAPI-described service exposing database, collection, and document operations). All data access goes through that backend — there is no direct MongoDB driver in this repo.
-
-The repo is currently a fresh Nuxt scaffold; most application code (pages, components, composables, API client) has yet to be written.
+Vue 3 + Vite frontend that provides a visual admin UI for a MongoDB instance. It talks over HTTP to a separate **MongoApi** backend (an OpenAPI-described service exposing database, collection, and document operations). All data access goes through that backend — there is no direct MongoDB driver in this repo.
 
 ## Stack and package manager
 
-- Nuxt `^4.4.4`, Vue `^3.5.33`, vue-router `^5.0.6`, TypeScript.
-- **Use `pnpm`** — the project ships a `pnpm-lock.yaml`. Do not run `npm install` or `yarn`; that creates a second lockfile and drifts dependencies.
+- Vue `^3.5`, Vite `^8`, TypeScript.
+- **Use `pnpm`** — the project ships a `pnpm-lock.yaml`. Do not run `npm install` or `yarn`.
 
-## Nuxt 4 directory convention (read this before adding files)
+## Directory structure
 
-Nuxt **4** uses `app/` as the source root, unlike Nuxt 3 where these folders sit at the project root. Place new code under `app/`:
+Source root is `src/`:
 
-- `app/pages/**` — file-based routes
-- `app/components/**` — auto-imported components
-- `app/composables/**` — auto-imported composables (e.g. `useMongoApi`)
-- `app/layouts/**` — layouts
-- `app/app.vue` — root component (currently shows `<NuxtWelcome />`; replace once real pages exist)
+- `src/components/` — Vue SFCs
+- `src/composables/` — composables (e.g. `useMongoApi`, `useCurrentDb`)
+- `src/assets/` — static assets
+- `src/App.vue` — root component
+- `src/main.ts` — entry point
+- `src/style.css` — global CSS and Tailwind v4 theme
 
-Stay at the project root: `public/` (static assets), `nuxt.config.ts`, `tsconfig.json`. Never hand-edit `.nuxt/` — it is regenerated.
+Project root: `public/` (static assets), `vite.config.ts`, `tsconfig.json`.
 
 ## Backend API contract (MongoApi)
 
@@ -50,39 +49,25 @@ Base path: `/api`. Every collection/document endpoint requires a `?db=<name>` qu
 
 ### API integration pattern
 
-Because `?db=` is on nearly every call, build it into a shared layer rather than inlining `$fetch` per page:
-
-- A composable like `app/composables/useMongoApi.ts` that wraps `$fetch` (or `useFetch`) with the base URL and auto-appends `?db=` from the current selection.
-- A "current database" state via `useState('currentDb', () => '')` so pages share the selection without prop-drilling.
-
-The backend URL is not yet wired. When adding it, use Nuxt runtime config:
-
-```ts
-// nuxt.config.ts
-runtimeConfig: {
-	public: {
-		apiBase: "";
-	}
-} // NUXT_PUBLIC_API_BASE overrides at runtime
-```
-
-For local dev, prefer a Nitro dev proxy in `nuxt.config.ts` (`nitro.devProxy`) over enabling CORS on the backend.
+- `src/composables/useMongoApi.ts` wraps native `fetch` with the base URL and auto-appends `?db=` from the current selection.
+- `src/composables/useCurrentDb.ts` holds shared current-database state as a module-level `ref` — one singleton across all composable calls.
+- The backend base URL is set via the `VITE_API_BASE` env var. For local dev, the Vite dev proxy in `vite.config.ts` forwards `/api` to `http://localhost:8080` (override with `VITE_API_BASE`).
 
 ## TypeScript
 
-`tsconfig.json` only references the auto-generated `.nuxt/tsconfig.*.json` files — type config flows from Nuxt. Edit `nuxt.config.ts` (e.g. `typescript.strict`) rather than the root `tsconfig.json`.
+Config is split across `tsconfig.json` → `tsconfig.app.json` / `tsconfig.node.json`. Type-check with `vue-tsc -b`.
 
 ## Conventions
 
 - Vue 3 SFCs with `<script setup lang="ts">`.
-- Rely on Nuxt auto-imports — do **not** manually import `ref`, `computed`, `useState`, `useFetch`, `$fetch`, `definePageMeta`, etc., nor components under `app/components/`. Manually importing them suppresses Nuxt's auto-import handling and creates inconsistent code.
+- **Always import explicitly** — there are no auto-imports. Import Vue composition API from `'vue'` and composables with relative paths.
 
 ## Styling
 
-- **Tailwind v4** is the styling system (configured via `@tailwindcss/vite` in `nuxt.config.ts`, with CSS-first config in `main.css`). Use Tailwind utility classes for everything.
-- **Do not use inline `style="..."` attributes**, and avoid `<style>` blocks in SFCs unless a utility genuinely cannot express the rule (e.g. complex keyframe animations). When in doubt, reach for a utility first.
-- **Spacing scale is `--spacing: 1px`** (set in `main.css`). This is intentional and differs from Tailwind's default 4px scale: `p-4` = 4px, `gap-12` = 12px, `mt-24` = 24px. Pick numbers that read as raw pixel values, not as multiples of 4.
-- **Colors live as theme tokens** in `main.css` under `@theme`. Use the semantic utilities (`bg-primary`, `text-secondary`, `border-accent`, `bg-bright-primary`, `bg-surface`) rather than raw hex codes or Tailwind's default palette (`bg-blue-500`, etc.). If a needed color is missing, add it to `@theme` rather than hardcoding it in a component.
+- **Tailwind v4** via `@tailwindcss/vite` plugin (wired in `vite.config.ts`). CSS-first config in `src/style.css`.
+- **Do not use inline `style="..."` attributes**, and avoid `<style>` blocks unless a utility cannot express the rule.
+- **Spacing scale is `--spacing: 1px`** (set in `style.css`). `p-4` = 4px, `gap-12` = 12px, `mt-24` = 24px.
+- **Colors live as theme tokens** in `style.css` under `@theme`. Use semantic utilities (`bg-primary`, `text-secondary`, `border-accent`, `bg-bright-primary`, `bg-surface`) rather than raw hex or Tailwind's default palette.
 
 ### Color theme — "Verdant" (MongoDB-aligned)
 

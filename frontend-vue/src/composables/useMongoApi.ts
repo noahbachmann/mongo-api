@@ -1,3 +1,5 @@
+import { useCurrentDb } from './useCurrentDb'
+
 type RequestOpts = {
 	method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 	body?: unknown
@@ -5,8 +7,22 @@ type RequestOpts = {
 	query?: Record<string, unknown>
 }
 
+async function apiFetch<T>(path: string, init: Omit<RequestInit, 'body'> & { query?: Record<string, unknown>; body?: unknown } = {}): Promise<T> {
+	const base = import.meta.env.API_BASE ?? ''
+	const { query, body, ...rest } = init
+	const url = new URL(path, base || location.origin)
+	if (query) Object.entries(query).forEach(([k, v]) => v != null && url.searchParams.set(k, String(v)))
+	const res = await fetch(url.toString(), {
+		...rest,
+		body: body !== undefined ? JSON.stringify(body) : undefined,
+		headers: body !== undefined ? { 'Content-Type': 'application/json', ...rest.headers } : rest.headers,
+	})
+	if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+	const text = await res.text()
+	return (text ? JSON.parse(text) : undefined) as T
+}
+
 export function useMongoApi() {
-	const baseURL = useRuntimeConfig().public.apiBase || undefined
 	const currentDb = useCurrentDb()
 
 	const requireDb = () => {
@@ -17,8 +33,7 @@ export function useMongoApi() {
 	const request = <T = unknown>(path: string, opts: RequestOpts = {}) => {
 		const query: Record<string, unknown> = { ...(opts.query ?? {}) }
 		if (opts.needsDb !== false) query.db = requireDb()
-		return $fetch<T>(path, {
-			baseURL,
+		return apiFetch<T>(path, {
 			method: opts.method ?? 'GET',
 			body: opts.body,
 			query,
@@ -62,7 +77,6 @@ export function useMongoApi() {
 
 		// MongoDB has no explicit create-db; materialize one by creating its first collection.
 		createDbWithCollection: (dbName: string, collName: string) =>
-			$fetch(collectionURL(collName), { baseURL, method: 'POST', query: { db: dbName } }),
+			apiFetch(collectionURL(collName), { method: 'POST', query: { db: dbName } }),
 	}
 }
-
