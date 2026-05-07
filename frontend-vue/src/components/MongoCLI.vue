@@ -116,7 +116,7 @@
 			preview: (cmd) =>
 				`db.${cmd.collection}.find(${docsFilter.value || '{}'}).skip(${docsSkip.value}).limit(${docsLimit.value})`,
 			run: async (cmd, entry) => {
-				await loadDocsInto(cmd.collection!, entry)
+				await fetchDocs(cmd.collection!, entry)
 				return entry.documents?.items ?? []
 			},
 		},
@@ -211,7 +211,7 @@
 		}
 	}
 
-	async function loadDocsInto(collection: string, entry: HistoryEntry) {
+	async function fetchDocs(collection: string, entry: HistoryEntry) {
 		const docs = await api.listDocuments(collection, {
 			filter: docsFilter.value || undefined,
 			limit: docsLimit.value,
@@ -223,14 +223,14 @@
 		history.value = [...history.value]
 	}
 
-	async function appendDocsRefresh(collection: string) {
+	async function validateDocsFetch(collection: string) {
 		const refreshEntry: HistoryEntry = {
 			cmd: `db.${currentDb.value}.${collection}.find() // validation`,
 			output: '…',
 		}
 		history.value.push(refreshEntry)
 		try {
-			await loadDocsInto(collection, refreshEntry)
+			await fetchDocs(collection, refreshEntry)
 		} catch (err) {
 			refreshEntry.output = err instanceof Error ? err.message : String(err)
 			refreshEntry.error = true
@@ -239,10 +239,12 @@
 		scrollToBottom()
 	}
 
-	function stage(kind: CommandKind, extras: Omit<Command, 'kind'> = {}) {
+	async function stage(kind: CommandKind, extras: Omit<Command, 'kind'> = {}) {
 		command.value = { kind, ...extras }
 		if (kind !== 'drop-collection') dropCollectionTarget.value = ''
 		if (kind !== 'drop-db') dropDbTarget.value = ''
+		await nextTick()
+		scrollToBottom()
 	}
 
 	function onEditDoc(collection: string, doc: string) {
@@ -280,7 +282,7 @@
 			spec.onSuccess?.(cmd)
 			if (spec.refresh === 'dbs') await refreshDbs()
 			if (spec.refresh === 'collections') await refreshCollections()
-			if (spec.refresh === 'docs') await appendDocsRefresh(cmd.collection!)
+			if (spec.refresh === 'docs') await validateDocsFetch(cmd.collection!)
 		} catch (err: unknown) {
 			entry.output = err instanceof Error ? err.message : String(err)
 			entry.error = true
@@ -391,7 +393,10 @@
 									type="button"
 									class="btn-inline"
 									@click="
-										stage('delete-document', { collection: entry.documents!.collection, id: JSON.parse(doc)._id })
+										stage('delete-document', {
+											collection: entry.documents!.collection,
+											id: JSON.parse(doc)._id,
+										})
 									">
 									del
 								</button>
