@@ -3,7 +3,7 @@ services:
     image: mongo:latest
     container_name: mongo-server
     ports:
-      - "55555:27017"
+      - "44444:27017"
     volumes:
       - mongodb-data:/data/db
 
