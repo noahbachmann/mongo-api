@@ -2,6 +2,11 @@
 	import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 	import { useMongoApi } from '../composables/useMongoApi'
 	import { useCurrentDb } from '../composables/useCurrentDb'
+	import { stringifyNames } from '../utils/stringifyNames'
+	import { normalizeDocuments } from '../utils/normalizeDocuments'
+	import { safeStringifyData } from '../utils/safeStringifyData'
+	import { snippet } from '../utils/snippet'
+	import { validateUserInput } from '../utils/validateUserInput'
 
 	type CommandKind =
 		| 'show-dbs'
@@ -18,13 +23,11 @@
 
 	type Command = { kind: CommandKind; db?: string; collection?: string; id?: string }
 
-	type DocItem = { id: string | null; json: string }
-
 	type HistoryEntry = {
 		cmd: string
 		output: string
 		error?: boolean
-		documents?: { collection: string; items: DocItem[] }
+		documents?: { collection: string; items: string[] }
 	}
 
 	type CommandSpec = {
@@ -59,63 +62,6 @@
 	const docsLimit = ref(50)
 	const docsSkip = ref(0)
 	const jsonInput = ref('')
-
-	function stringifyNames(data: unknown): string[] {
-		if (!Array.isArray(data)) return []
-		return data
-			.map((item) => {
-				if (typeof item === 'string') return item
-				if (item && typeof item === 'object' && 'name' in item) return String((item as { name: unknown }).name)
-				return String(item)
-			})
-			.filter(Boolean)
-	}
-
-	function extractId(item: unknown): string | null {
-		if (!item || typeof item !== 'object') return null
-		const obj = item as Record<string, unknown>
-		const raw = obj._id ?? obj.id
-		if (typeof raw === 'string') return raw
-		if (raw && typeof raw === 'object' && '$oid' in raw) return String((raw as { $oid: unknown }).$oid)
-		if (raw != null) return String(raw)
-		return null
-	}
-
-	function normalizeDocuments(data: unknown): DocItem[] {
-		let arr = data
-		if (data && typeof data === 'object' && 'documents' in data) {
-			arr = (data as { documents: unknown }).documents
-		}
-		if (!Array.isArray(arr)) return []
-		return arr.map((item) => {
-			const parsed = typeof item === 'string' ? JSON.parse(item) : item
-			return { id: extractId(parsed), json: safeStringifyData(parsed) }
-		})
-	}
-
-	function safeStringifyData(data: unknown): string {
-		if (data === undefined || data === null || data === '') return '(no content)'
-		try {
-			return JSON.stringify(data, null, 2)
-		} catch {
-			return String(data)
-		}
-	}
-
-	function snippet(s: string, max = 60): string {
-		const flat = s.replace(/\s+/g, ' ').trim()
-		if (!flat) return '<json>'
-		return flat.length > max ? flat.slice(0, max - 1) + '…' : flat
-	}
-
-	function validateJsonInput(input: string): string {
-		try {
-			JSON.parse(input)
-			return input
-		} catch (err) {
-			throw new Error(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`)
-		}
-	}
 
 	const commands: Record<CommandKind, CommandSpec> = {
 		'show-dbs': {
@@ -176,7 +122,7 @@
 		},
 		'insert-document': {
 			preview: (cmd) => `db.${cmd.collection}.insertOne(${snippet(jsonInput.value)})`,
-			run: (cmd) => api.insertDocument(cmd.collection!, validateJsonInput(jsonInput.value)),
+			run: (cmd) => api.insertDocument(cmd.collection!, validateUserInput(jsonInput.value)),
 			validate: () => jsonInput.value.trim().length > 0,
 			refresh: 'docs',
 			keepJsonOnSubmit: true,
@@ -189,8 +135,8 @@
 			run: (cmd) =>
 				api.updateDocument(
 					cmd.collection!,
-					validateJsonInput(jsonInput.value),
-					validateJsonInput(docsFilter.value) || undefined,
+					validateUserInput(jsonInput.value),
+					validateUserInput(docsFilter.value) || undefined,
 				),
 			validate: (cmd) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
 			refresh: 'docs',
@@ -205,8 +151,8 @@
 			run: (cmd) =>
 				api.updateDocuments(
 					cmd.collection!,
-					validateJsonInput(jsonInput.value),
-					validateJsonInput(docsFilter.value) || undefined,
+					validateUserInput(jsonInput.value),
+					validateUserInput(docsFilter.value) || undefined,
 				),
 			validate: (cmd) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
 			refresh: 'docs',
@@ -299,11 +245,10 @@
 		if (kind !== 'drop-db') dropDbTarget.value = ''
 	}
 
-	function onEditDoc(collection: string, doc: DocItem) {
-		if (!doc.id) return
+	function onEditDoc(collection: string, doc: string) {
 		let parsed: Record<string, unknown> = {}
 		try {
-			parsed = JSON.parse(doc.json)
+			parsed = JSON.parse(doc)
 		} catch {
 			return
 		}
@@ -433,31 +378,25 @@
 						</div>
 						<div
 							v-for="(doc, j) in entry.documents.items"
-							:key="doc.id ?? j"
+							:key="j"
 							class="border border-surface/10 rounded-sm p-8">
-							<div class="flex justify-between items-center mb-4 gap-8">
-								<span class="text-surface/50 text-xs truncate">_id: {{ doc.id ?? '(missing)' }}</span>
-								<div class="flex gap-4 shrink-0">
-									<button
-										type="button"
-										class="btn-inline"
-										:disabled="!doc.id"
-										@click="onEditDoc(entry.documents!.collection, doc)">
-										edit
-									</button>
-									<button
-										type="button"
-										class="btn-inline"
-										:disabled="!doc.id"
-										@click="
-											doc.id &&
-											stage('delete-document', { collection: entry.documents!.collection, id: doc.id })
-										">
-										del
-									</button>
-								</div>
+							<div class="flex justify-end mb-4 gap-4">
+								<button
+									type="button"
+									class="btn-inline"
+									@click="onEditDoc(entry.documents!.collection, doc)">
+									edit
+								</button>
+								<button
+									type="button"
+									class="btn-inline"
+									@click="
+										stage('delete-document', { collection: entry.documents!.collection, id: JSON.parse(doc)._id })
+									">
+									del
+								</button>
 							</div>
-							<pre class="text-surface/80 text-xs whitespace-pre-wrap wrap-break-word">{{ doc.json }}</pre>
+							<pre class="text-surface/80 text-xs whitespace-pre-wrap wrap-break-word">{{ doc }}</pre>
 						</div>
 					</div>
 				</div>
