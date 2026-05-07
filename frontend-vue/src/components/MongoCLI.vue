@@ -1,5 +1,5 @@
 <script setup lang="ts">
-	import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Ref } from 'vue'
+	import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 	import { useMongoApi } from '../composables/useMongoApi'
 	import { useCurrentDb } from '../composables/useCurrentDb'
 
@@ -27,30 +27,15 @@
 		documents?: { collection: string; items: DocItem[] }
 	}
 
-	type Ctx = {
-		cmd: Command
-		currentDb: Ref<string>
-		jsonInput: Ref<string>
-		docsFilter: Ref<string>
-		docsLimit: Ref<number>
-		docsSkip: Ref<number>
-	}
-
-	type RunCtx = Ctx & {
-		api: ReturnType<typeof useMongoApi>
-		entry: HistoryEntry
-		loadDocsInto: (col: string, e: HistoryEntry) => Promise<void>
-	}
-
 	type CommandSpec = {
-		preview: (ctx: Ctx) => string
-		run: (ctx: RunCtx) => Promise<unknown>
+		preview: (cmd: Command) => string
+		run: (cmd: Command, entry: HistoryEntry) => Promise<unknown>
 		needsCurrentDb?: boolean
 		danger?: boolean
-		validate?: (ctx: Ctx) => boolean
+		validate?: (cmd: Command) => boolean
 		refresh?: 'dbs' | 'collections' | 'docs'
 		keepJsonOnSubmit?: boolean
-		onSuccess?: (ctx: RunCtx) => void
+		onSuccess?: (cmd: Command) => void
 	}
 
 	const api = useMongoApi()
@@ -75,7 +60,7 @@
 	const docsSkip = ref(0)
 	const jsonInput = ref('')
 
-	function normalizeNames(data: unknown): string[] {
+	function stringifyNames(data: unknown): string[] {
 		if (!Array.isArray(data)) return []
 		return data
 			.map((item) => {
@@ -104,21 +89,17 @@
 		if (!Array.isArray(arr)) return []
 		return arr.map((item) => {
 			const parsed = typeof item === 'string' ? JSON.parse(item) : item
-			return { id: extractId(parsed), json: safeStringify(parsed) }
+			return { id: extractId(parsed), json: safeStringifyData(parsed) }
 		})
 	}
 
-	function safeStringify(v: unknown): string {
-		try {
-			return JSON.stringify(v, null, 2)
-		} catch {
-			return String(v)
-		}
-	}
-
-	function formatOutput(data: unknown): string {
+	function safeStringifyData(data: unknown): string {
 		if (data === undefined || data === null || data === '') return '(no content)'
-		return safeStringify(data)
+		try {
+			return JSON.stringify(data, null, 2)
+		} catch {
+			return String(data)
+		}
 	}
 
 	function snippet(s: string, max = 60): string {
@@ -127,9 +108,10 @@
 		return flat.length > max ? flat.slice(0, max - 1) + '…' : flat
 	}
 
-	function parseJsonInput(): unknown {
+	function validateJsonInput(input: string): string {
 		try {
-			return JSON.parse(jsonInput.value)
+			JSON.parse(input)
+			return input
 		} catch (err) {
 			throw new Error(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`)
 		}
@@ -139,21 +121,21 @@
 		'show-dbs': {
 			needsCurrentDb: false,
 			preview: () => 'show dbs',
-			run: ({ api }) => api.listDbs(),
+			run: () => api.listDbs(),
 			refresh: 'dbs',
 		},
 		'show-collections': {
-			preview: ({ currentDb }) => `show collections${currentDb.value ? ` --db=${currentDb.value}` : ''}`,
-			run: ({ api }) => api.listCollections(),
+			preview: () => `show collections${currentDb.value ? ` --db=${currentDb.value}` : ''}`,
+			run: () => api.listCollections(),
 			refresh: 'collections',
 		},
 		'create-db': {
 			needsCurrentDb: false,
-			preview: ({ cmd }) => `use ${cmd.db}; db.createCollection("${cmd.collection}")`,
-			run: ({ api, cmd }) => api.createDbWithCollection(cmd.db!, cmd.collection!),
-			validate: ({ cmd }) => Boolean(cmd.db && cmd.collection),
+			preview: (cmd) => `use ${cmd.db}; db.createCollection("${cmd.collection}")`,
+			run: (cmd) => api.createDbWithCollection(cmd.db!, cmd.collection!),
+			validate: (cmd) => Boolean(cmd.db && cmd.collection),
 			refresh: 'dbs',
-			onSuccess: ({ cmd, currentDb }) => {
+			onSuccess: (cmd) => {
 				currentDb.value = cmd.db!
 				newDbName.value = ''
 				newCollectionInput.value = ''
@@ -162,17 +144,17 @@
 		'drop-db': {
 			needsCurrentDb: false,
 			danger: true,
-			preview: ({ cmd }) => `use ${cmd.db}; db.dropDatabase()`,
-			run: ({ api, cmd }) => api.dropDb(cmd.db!),
-			validate: ({ cmd }) => Boolean(cmd.db),
+			preview: (cmd) => `use ${cmd.db}; db.dropDatabase()`,
+			run: (cmd) => api.dropDb(cmd.db!),
+			validate: (cmd) => Boolean(cmd.db),
 			refresh: 'dbs',
-			onSuccess: ({ cmd, currentDb }) => {
+			onSuccess: (cmd) => {
 				if (currentDb.value === cmd.db) currentDb.value = ''
 			},
 		},
 		'create-collection': {
-			preview: ({ cmd }) => `db.createCollection("${cmd.collection}")`,
-			run: ({ api, cmd }) => api.createCollection(cmd.collection!),
+			preview: (cmd) => `db.createCollection("${cmd.collection}")`,
+			run: (cmd) => api.createCollection(cmd.collection!),
 			refresh: 'collections',
 			onSuccess: () => {
 				newCollectionInput.value = ''
@@ -180,22 +162,22 @@
 		},
 		'drop-collection': {
 			danger: true,
-			preview: ({ cmd }) => `db.dropCollection("${cmd.collection}")`,
-			run: ({ api, cmd }) => api.dropCollection(cmd.collection!),
+			preview: (cmd) => `db.dropCollection("${cmd.collection}")`,
+			run: (cmd) => api.dropCollection(cmd.collection!),
 			refresh: 'collections',
 		},
 		'show-documents': {
-			preview: ({ cmd, docsFilter, docsSkip, docsLimit }) =>
+			preview: (cmd) =>
 				`db.${cmd.collection}.find(${docsFilter.value || '{}'}).skip(${docsSkip.value}).limit(${docsLimit.value})`,
-			run: async ({ cmd, entry, loadDocsInto }) => {
+			run: async (cmd, entry) => {
 				await loadDocsInto(cmd.collection!, entry)
 				return entry.documents?.items ?? []
 			},
 		},
 		'insert-document': {
-			preview: ({ cmd, jsonInput }) => `db.${cmd.collection}.insertOne(${snippet(jsonInput.value)})`,
-			run: ({ api, cmd }) => api.insertDocument(cmd.collection!, parseJsonInput()),
-			validate: ({ jsonInput }) => jsonInput.value.trim().length > 0,
+			preview: (cmd) => `db.${cmd.collection}.insertOne(${snippet(jsonInput.value)})`,
+			run: (cmd) => api.insertDocument(cmd.collection!, validateJsonInput(jsonInput.value)),
+			validate: () => jsonInput.value.trim().length > 0,
 			refresh: 'docs',
 			keepJsonOnSubmit: true,
 			onSuccess: () => {
@@ -203,11 +185,14 @@
 			},
 		},
 		'update-document': {
-			preview: ({ cmd, docsFilter, jsonInput }) =>
-				`db.${cmd.collection}.updateOne(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
-			run: ({ api, cmd, docsFilter }) =>
-				api.updateDocument(cmd.collection!, parseJsonInput(), docsFilter.value || undefined),
-			validate: ({ cmd, jsonInput }) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
+			preview: (cmd) => `db.${cmd.collection}.updateOne(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
+			run: (cmd) =>
+				api.updateDocument(
+					cmd.collection!,
+					validateJsonInput(jsonInput.value),
+					validateJsonInput(docsFilter.value) || undefined,
+				),
+			validate: (cmd) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
 			refresh: 'docs',
 			keepJsonOnSubmit: true,
 			onSuccess: () => {
@@ -216,11 +201,14 @@
 			},
 		},
 		'update-documents': {
-			preview: ({ cmd, docsFilter, jsonInput }) =>
-				`db.${cmd.collection}.updateMany(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
-			run: ({ api, cmd, docsFilter }) =>
-				api.updateDocuments(cmd.collection!, parseJsonInput(), docsFilter.value || undefined),
-			validate: ({ cmd, jsonInput }) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
+			preview: (cmd) => `db.${cmd.collection}.updateMany(${docsFilter.value || '{}'}, ${snippet(jsonInput.value)})`,
+			run: (cmd) =>
+				api.updateDocuments(
+					cmd.collection!,
+					validateJsonInput(jsonInput.value),
+					validateJsonInput(docsFilter.value) || undefined,
+				),
+			validate: (cmd) => Boolean(cmd.collection) && jsonInput.value.trim().length > 0,
 			refresh: 'docs',
 			keepJsonOnSubmit: true,
 			onSuccess: () => {
@@ -230,20 +218,16 @@
 		},
 		'delete-document': {
 			danger: true,
-			preview: ({ cmd }) => `db.${cmd.collection}.deleteOne({_id: "${cmd.id}"})`,
-			run: ({ api, cmd }) => api.deleteDocument(cmd.collection!, cmd.id!),
-			validate: ({ cmd }) => Boolean(cmd.collection && cmd.id),
+			preview: (cmd) => `db.${cmd.collection}.deleteOne({_id: "${cmd.id}"})`,
+			run: (cmd) => api.deleteDocument(cmd.collection!, cmd.id!),
+			validate: (cmd) => Boolean(cmd.collection && cmd.id),
 			refresh: 'docs',
 		},
 	}
 
-	function makeCtx(cmd: Command): Ctx {
-		return { cmd, currentDb, jsonInput, docsFilter, docsLimit, docsSkip }
-	}
-
 	const commandPreview = computed(() => {
 		const c = command.value
-		return c ? commands[c.kind].preview(makeCtx(c)) : ''
+		return c ? commands[c.kind].preview(c) : ''
 	})
 
 	const isDangerCommand = computed(() => Boolean(command.value && commands[command.value.kind].danger))
@@ -253,12 +237,12 @@
 		if (!c) return false
 		const spec = commands[c.kind]
 		if (spec.needsCurrentDb !== false && !currentDb.value) return false
-		return spec.validate ? spec.validate(makeCtx(c)) : true
+		return spec.validate ? spec.validate(c) : true
 	})
 
 	async function refreshDbs() {
 		try {
-			dbs.value = normalizeNames(await api.listDbs())
+			dbs.value = stringifyNames(await api.listDbs())
 		} catch {
 			dbs.value = []
 		}
@@ -272,7 +256,7 @@
 			return
 		}
 		try {
-			collections.value = normalizeNames(await api.listCollections())
+			collections.value = stringifyNames(await api.listCollections())
 			if (docsCollection.value && !collections.value.includes(docsCollection.value)) docsCollection.value = ''
 			if (dropCollectionTarget.value && !collections.value.includes(dropCollectionTarget.value))
 				dropCollectionTarget.value = ''
@@ -287,7 +271,7 @@
 			limit: docsLimit.value,
 			skip: docsSkip.value,
 		})
-		entry.output = formatOutput(docs)
+		entry.output = safeStringifyData(docs)
 		entry.documents = { collection, items: normalizeDocuments(docs) }
 		// Force reactivity update
 		history.value = [...history.value]
@@ -295,7 +279,7 @@
 
 	async function appendDocsRefresh(collection: string) {
 		const refreshEntry: HistoryEntry = {
-			cmd: `db.${currentDb.value}.${collection}.find() // refreshed`,
+			cmd: `db.${currentDb.value}.${collection}.find() // validation`,
 			output: '…',
 		}
 		history.value.push(refreshEntry)
@@ -346,10 +330,9 @@
 		scrollToBottom()
 
 		try {
-			const runCtx: RunCtx = { ...makeCtx(cmd), api, entry, loadDocsInto }
-			const result = await spec.run(runCtx)
-			if (!entry.documents) entry.output = formatOutput(result)
-			spec.onSuccess?.(runCtx)
+			const result = await spec.run(cmd, entry)
+			if (!entry.documents) entry.output = safeStringifyData(result)
+			spec.onSuccess?.(cmd)
 			if (spec.refresh === 'dbs') await refreshDbs()
 			if (spec.refresh === 'collections') await refreshCollections()
 			if (spec.refresh === 'docs') await appendDocsRefresh(cmd.collection!)
