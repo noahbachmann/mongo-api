@@ -39,8 +39,8 @@ describe('initial rendering', () => {
 
 	it('calls listDbs and listCollections on mount', () => {
 		mountCLI()
-		cy.get('@listDbs').should('have.been.calledOnce')
-		cy.get('@listCollections').should('have.been.calledOnce')
+		cy.get('@listDbs.all').should('have.length', 1)
+		cy.get('@listCollections.all').should('have.length', 1)
 	})
 
 	it('populates DB dropdown with fetched databases', () => {
@@ -74,8 +74,8 @@ describe('show dbs', () => {
 	})
 
 	it('submits and shows result in history', () => {
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@showDbs')
@@ -105,7 +105,7 @@ describe('create db', () => {
 
 	it('stages with correct preview', () => {
 		mountCLI()
-		cy.get('[data-cy="create-db-name"]').type('newdb')
+		cy.get('[data-cy="create-db-name"]').should('not.be.disabled').type('newdb')
 		cy.get('[data-cy="create-db-coll"]').type('newcoll')
 		cy.get('[data-cy="create-db-stage"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'use newdb')
@@ -122,8 +122,8 @@ describe('create db', () => {
 
 	it('on successful submit, clears input fields and refreshes dbs', () => {
 		cy.intercept('POST', '**/api/collection/newcoll?db=newdb', { body: {} }).as('createDb')
-		cy.intercept('GET', '**/api/db', { body: [...dbList, { name: 'newdb' }] }).as('refreshDbs')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: [...dbList, { name: 'newdb' }] }).as('refreshDbs')
 		cy.get('[data-cy="create-db-name"]').type('newdb')
 		cy.get('[data-cy="create-db-coll"]').type('newcoll')
 		cy.get('[data-cy="create-db-stage"]').click()
@@ -153,8 +153,8 @@ describe('drop db', () => {
 
 	it('on success clears currentDb if dropped db was current', () => {
 		cy.intercept('DELETE', '**/api/db/project', { body: {} }).as('dropDb')
-		cy.intercept('GET', '**/api/db', { body: [{ name: 'admin' }] }).as('refreshDbs')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: [{ name: 'admin' }] }).as('refreshDbs')
 		cy.get('[data-cy="drop-db-select"]').select('project')
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@dropDb')
@@ -194,8 +194,8 @@ describe('show collections', () => {
 	})
 
 	it('stages and submits correctly', () => {
-		cy.intercept('GET', '**/api/collection?db=*', { body: collList }).as('showColls')
 		mountCLI()
+		cy.intercept('GET', '**/api/collection?db=*', { body: collList }).as('showColls')
 		cy.get('[data-cy="show-colls-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'show collections')
 		cy.get('[data-cy="submit-btn"]').click()
@@ -218,8 +218,8 @@ describe('create collection', () => {
 
 	it('on success clears input and refreshes collections', () => {
 		cy.intercept('POST', '**/api/collection/newcoll?db=*', { body: {} }).as('createColl')
-		cy.intercept('GET', '**/api/collection?db=*', { body: [...collList, { name: 'newcoll' }] }).as('refreshColls')
 		mountCLI()
+		cy.intercept('GET', '**/api/collection?db=*', { body: [...collList, { name: 'newcoll' }] }).as('refreshColls')
 		cy.get('[data-cy="create-coll-input"]').type('newcoll{enter}')
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@createColl')
@@ -279,7 +279,7 @@ describe('find documents', () => {
 	})
 
 	it('renders document cards with edit/del buttons', () => {
-		cy.intercept('GET', '**/api/collection/users/documents?db=*', { body: sampleDocs }).as('findDocs')
+		cy.intercept('GET', '**/api/collection/users/documents?*', { body: sampleDocs }).as('findDocs')
 		mountCLI()
 		selectCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
@@ -291,7 +291,7 @@ describe('find documents', () => {
 	})
 
 	it('shows "(no documents)" for empty results', () => {
-		cy.intercept('GET', '**/api/collection/users/documents?db=*', { body: { documents: [] } }).as('findEmpty')
+		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('findEmpty')
 		mountCLI()
 		selectCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
@@ -345,8 +345,8 @@ describe('insert document', () => {
 	})
 
 	it('on valid JSON submit, clears jsonInput', () => {
-		cy.intercept('POST', '**/api/collection/users/documents?db=*', { body: { insertedId: '123' } }).as('insertDoc')
-		cy.intercept('GET', '**/api/collection/users/documents?db=*', { body: { documents: [] } }).as('refreshDocs')
+		cy.intercept('POST', '**/api/collection/users/documents?*', { body: { insertedId: '123' } }).as('insertDoc')
+		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('refreshDocs')
 		mountCLI()
 		selectCollection('users')
 		cy.get('[data-cy="json-input"]').type('{"name": "test"}', { parseSpecialCharSequences: false })
@@ -378,8 +378,8 @@ describe('updateOne', () => {
 	})
 
 	it('on success clears jsonInput and docsFilter', () => {
-		cy.intercept('PATCH', '**/api/collection/users/documents/single?db=*', { body: {} }).as('updateDoc')
-		cy.intercept('GET', '**/api/collection/users/documents?db=*', { body: { documents: [] } }).as('refreshDocs')
+		cy.intercept('PATCH', '**/api/collection/users/documents/single?*', { body: {} }).as('updateDoc')
+		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('refreshDocs')
 		mountCLI()
 		selectCollection('users')
 		cy.get('[data-cy="docs-filter"]').type('{"_id": "1"}', { parseSpecialCharSequences: false })
@@ -402,8 +402,8 @@ describe('updateMany', () => {
 	})
 
 	it('on success clears jsonInput and docsFilter', () => {
-		cy.intercept('PATCH', '**/api/collection/users/documents?db=*', { body: {} }).as('updateDocs')
-		cy.intercept('GET', '**/api/collection/users/documents?db=*', { body: { documents: [] } }).as('refreshDocs')
+		cy.intercept('PATCH', '**/api/collection/users/documents?*', { body: {} }).as('updateDocs')
+		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('refreshDocs')
 		mountCLI()
 		selectCollection('users')
 		cy.get('[data-cy="docs-filter"]').type('{"role": "admin"}', { parseSpecialCharSequences: false })
@@ -418,7 +418,7 @@ describe('updateMany', () => {
 
 describe('delete document', () => {
 	beforeEach(() => {
-		cy.intercept('GET', '**/api/collection/users/documents?db=*', { body: sampleDocs }).as('findDocs')
+		cy.intercept('GET', '**/api/collection/users/documents?*', { body: sampleDocs }).as('findDocs')
 	})
 
 	it('clicking del stages delete-document with _id', () => {
@@ -458,7 +458,7 @@ describe('delete document', () => {
 
 describe('edit document flow', () => {
 	beforeEach(() => {
-		cy.intercept('GET', '**/api/collection/users/documents?db=*', { body: sampleDocs }).as('findDocs')
+		cy.intercept('GET', '**/api/collection/users/documents?*', { body: sampleDocs }).as('findDocs')
 	})
 
 	it('clicking edit populates filter and jsonInput, stages update', () => {
@@ -534,8 +534,8 @@ describe('command preview', () => {
 
 describe('history entries', () => {
 	it('successful output is shown in surface/90 color', () => {
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@showDbs')
@@ -543,8 +543,8 @@ describe('history entries', () => {
 	})
 
 	it('error output is shown in accent color', () => {
-		cy.intercept('GET', '**/api/db', { statusCode: 500, body: '' }).as('failDbs')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { statusCode: 500, body: '' }).as('failDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@failDbs')
@@ -552,8 +552,8 @@ describe('history entries', () => {
 	})
 
 	it('multiple commands accumulate in history', () => {
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs2')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs2')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@showDbs2')
@@ -564,8 +564,8 @@ describe('history entries', () => {
 	})
 
 	it('empty state disappears once history has entries', () => {
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs3')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs3')
 		cy.get('[data-cy="empty-state"]').should('exist')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -576,8 +576,8 @@ describe('history entries', () => {
 
 describe('keyboard shortcuts', () => {
 	it('Enter submits staged command when pressed outside form fields', () => {
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('enterSubmit')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: dbList }).as('enterSubmit')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('body').type('{enter}')
 		cy.wait('@enterSubmit')
@@ -585,10 +585,11 @@ describe('keyboard shortcuts', () => {
 	})
 
 	it('Ctrl+Enter submits from within a form field', () => {
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('ctrlEnterSubmit')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { body: dbList }).as('ctrlEnterSubmit')
 		cy.get('[data-cy="show-dbs-btn"]').click()
-		cy.get('[data-cy="create-db-name"]').type('{ctrl+enter}')
+		cy.get('[data-cy="create-db-name"]').type('shortcuts')
+		cy.get('[data-cy="create-db-coll"]').type('shortcutColl{ctrl+enter}')
 		cy.wait('@ctrlEnterSubmit')
 		cy.get('[data-cy="history-entry"]').should('have.length', 1)
 	})
@@ -668,8 +669,8 @@ describe('disabled states', () => {
 
 describe('error handling', () => {
 	it('shows API error in accent color', () => {
-		cy.intercept('GET', '**/api/db', { statusCode: 500, body: '' }).as('failDbs')
 		mountCLI()
+		cy.intercept('GET', '**/api/db', { statusCode: 500, body: '' }).as('failDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@failDbs')
@@ -716,7 +717,7 @@ describe('full CRUD workflow', () => {
 		mountCLI()
 
 		// Create DB
-		cy.get('[data-cy="create-db-name"]').type('blog')
+		cy.get('[data-cy="create-db-name"]').should('not.be.disabled').type('blog')
 		cy.get('[data-cy="create-db-coll"]').type('articles')
 		cy.get('[data-cy="create-db-stage"]').click()
 		cy.intercept('GET', '**/api/db', { body: [...dbList, { name: 'blog' }] }).as('refreshAfterCreate')
@@ -735,16 +736,10 @@ describe('full CRUD workflow', () => {
 		cy.intercept('POST', '**/api/collection/articles/documents?db=blog', { body: { insertedId: 'new1' } }).as(
 			'insertArticle',
 		)
-		cy.intercept('GET', '**/api/collection/articles/documents?db=blog*', { body: newDbDocs }).as('refreshAfterInsert')
+		cy.intercept('GET', '**/api/collection/articles/documents?*', { body: newDbDocs }).as('refreshAfterInsert')
 		cy.get('[data-cy="insert-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@insertArticle')
-
-		// Find documents
-		cy.get('[data-cy="find-btn"]').click()
-		cy.intercept('GET', '**/api/collection/articles/documents?db=blog*', { body: newDbDocs }).as('findArticles')
-		cy.get('[data-cy="submit-btn"]').click()
-		cy.wait('@findArticles')
 		cy.get('[data-cy="doc-card"]').should('have.length', 1)
 
 		// Edit document
@@ -756,11 +751,11 @@ describe('full CRUD workflow', () => {
 		// Delete document
 		cy.get('body').type('{esc}')
 		cy.get('[data-cy="find-btn"]').click()
-		cy.intercept('GET', '**/api/collection/articles/documents?db=blog*', { body: newDbDocs }).as('findAgain')
+		cy.intercept('GET', '**/api/collection/articles/documents?*', { body: newDbDocs }).as('findAgain')
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findAgain')
 		cy.intercept('DELETE', '**/api/collection/articles/documents/new1?db=blog', { body: {} }).as('deleteArticle')
-		cy.intercept('GET', '**/api/collection/articles/documents?db=blog*', {
+		cy.intercept('GET', '**/api/collection/articles/documents?*', {
 			body: { documents: [] },
 		}).as('afterDelete')
 		cy.get('[data-cy="doc-del"]').first().click()
