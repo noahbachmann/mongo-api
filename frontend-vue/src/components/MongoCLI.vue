@@ -352,9 +352,11 @@
 			<!-- terminal body -->
 			<div
 				ref="terminalEl"
+				data-cy="terminal"
 				class="px-16 py-16 h-400 overflow-y-auto text-sm leading-relaxed">
 				<div
 					v-if="!history.length && !commandPreview"
+					data-cy="empty-state"
 					class="text-surface/40">
 					Pick a command below, then press submit.
 				</div>
@@ -362,10 +364,12 @@
 				<div
 					v-for="(entry, i) in history"
 					:key="i"
+					data-cy="history-entry"
 					class="mb-12">
-					<div class="text-bright-primary">$ {{ entry.cmd }}</div>
+					<div data-cy="history-cmd" class="text-bright-primary">$ {{ entry.cmd }}</div>
 					<pre
 						v-if="!entry.documents"
+						data-cy="history-output"
 						class="whitespace-pre-wrap wrap-break-word mt-2"
 						:class="entry.error ? 'text-accent' : 'text-surface/90'"
 						>{{ entry.output }}</pre
@@ -381,16 +385,19 @@
 						<div
 							v-for="(doc, j) in entry.documents.items"
 							:key="j"
+							data-cy="doc-card"
 							class="border border-surface/10 rounded-sm p-8">
 							<div class="flex justify-end mb-4 gap-4">
 								<button
 									type="button"
+									data-cy="doc-edit"
 									class="btn-inline"
 									@click="onEditDoc(entry.documents!.collection, doc)">
 									edit
 								</button>
 								<button
 									type="button"
+									data-cy="doc-del"
 									class="btn-inline"
 									@click="
 										stage('delete-document', {
@@ -411,12 +418,14 @@
 					class="flex items-center justify-between gap-8">
 					<span
 						v-if="commandPreview"
+						data-cy="cmd-preview"
 						class="text-bright-primary">
 						$ {{ commandPreview }}<span class="inline-block animate-pulse ml-2">▌</span>
 					</span>
 					<span v-else />
 					<button
 						type="button"
+						data-cy="submit-btn"
 						class="btn shrink-0"
 						:class="isDangerCommand ? 'btn-danger' : 'btn-submit'"
 						:disabled="!canSubmit || running"
@@ -434,6 +443,7 @@
 
 					<button
 						type="button"
+						data-cy="show-dbs-btn"
 						class="btn btn-cmd"
 						@click="stage('show-dbs')">
 						show dbs
@@ -443,16 +453,19 @@
 						<span class="text-surface/70 text-sm">create</span>
 						<input
 							v-model="newDbName"
+							data-cy="create-db-name"
 							placeholder="database"
 							class="input-cli w-100"
 							@keydown.enter.prevent="stage('create-db', { db: newDbName, collection: newCollectionInput })" />
 						<input
 							v-model="newCollectionInput"
+							data-cy="create-db-coll"
 							placeholder="collection"
 							class="input-cli w-120"
 							@keydown.enter.prevent="stage('create-db', { db: newDbName, collection: newCollectionInput })" />
 						<button
 							type="button"
+							data-cy="create-db-stage"
 							class="btn btn-cmd"
 							:disabled="!newDbName || !newCollectionInput"
 							@click="stage('create-db', { db: newDbName, collection: newCollectionInput })">
@@ -464,6 +477,7 @@
 						<span class="text-surface/70 text-sm">delete db</span>
 						<select
 							v-model="dropDbTarget"
+							data-cy="drop-db-select"
 							class="input-cli"
 							@change="dropDbTarget && stage('drop-db', { db: dropDbTarget })">
 							<option value="">— pick —</option>
@@ -483,6 +497,7 @@
 					<span class="text-surface/40 uppercase">current database:</span>
 					<select
 						v-model="currentDb"
+						data-cy="current-db"
 						class="input-cli">
 						<option value="">— select db —</option>
 						<option
@@ -502,6 +517,7 @@
 
 					<button
 						type="button"
+						data-cy="show-colls-btn"
 						class="btn btn-cmd"
 						:disabled="!currentDb"
 						:title="!currentDb ? 'select a db first' : ''"
@@ -513,12 +529,14 @@
 						<span class="text-surface/70 text-sm">create</span>
 						<input
 							v-model="newCollectionInput"
+							data-cy="create-coll-input"
 							:disabled="!currentDb"
 							placeholder="collection"
 							class="input-cli w-140"
 							@keydown.enter.prevent="stage('create-collection', { collection: newCollectionInput })" />
 						<button
 							type="button"
+							data-cy="create-coll-stage"
 							class="btn btn-cmd"
 							:disabled="!currentDb || !newCollectionInput"
 							@click="stage('create-collection', { collection: newCollectionInput })">
@@ -530,6 +548,7 @@
 						<span class="text-surface/70 text-sm">delete coll</span>
 						<select
 							v-model="dropCollectionTarget"
+							data-cy="drop-coll-select"
 							:disabled="!currentDb"
 							class="input-cli"
 							@change="dropCollectionTarget && stage('drop-collection', { collection: dropCollectionTarget })">
@@ -550,6 +569,7 @@
 					<span class="text-surface/40 uppercase">current collection:</span>
 					<select
 						v-model="docsCollection"
+						data-cy="current-coll"
 						:disabled="!currentDb || !collections.length"
 						class="input-cli disabled:opacity-40">
 						<option value="">— select coll —</option>
@@ -574,6 +594,7 @@
 							limit:
 							<input
 								v-model.number="docsLimit"
+								data-cy="docs-limit"
 								:disabled="!docsCollection"
 								type="number"
 								min="1"
@@ -583,6 +604,7 @@
 							skip:
 							<input
 								v-model.number="docsSkip"
+								data-cy="docs-skip"
 								:disabled="!docsCollection"
 								type="number"
 								min="0"
@@ -596,6 +618,7 @@
 						<span class="text-surface/70 text-sm pt-6">filter:</span>
 						<textarea
 							v-model="docsFilter"
+							data-cy="docs-filter"
 							:disabled="!docsCollection"
 							rows="2"
 							placeholder='{"field": "value"}'
@@ -603,6 +626,7 @@
 						<div class="flex flex-col">
 							<button
 								type="button"
+								data-cy="find-btn"
 								class="btn btn-cmd"
 								:disabled="!currentDb || !docsCollection"
 								@click="stage('show-documents', { collection: docsCollection })">
@@ -615,6 +639,7 @@
 						<textarea
 							ref="jsonInputEl"
 							v-model="jsonInput"
+							data-cy="json-input"
 							:disabled="!docsCollection"
 							rows="3"
 							placeholder='{"name": "alpha"}'
@@ -622,6 +647,7 @@
 						<div class="flex flex-col gap-4">
 							<button
 								type="button"
+								data-cy="insert-btn"
 								class="btn btn-cmd"
 								:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
 								@click="stage('insert-document', { collection: docsCollection })">
@@ -629,6 +655,7 @@
 							</button>
 							<button
 								type="button"
+								data-cy="update-one-btn"
 								class="btn btn-cmd"
 								:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
 								@click="stage('update-document', { collection: docsCollection })">
@@ -636,6 +663,7 @@
 							</button>
 							<button
 								type="button"
+								data-cy="update-many-btn"
 								class="btn btn-cmd"
 								:disabled="!currentDb || !docsCollection || !jsonInput.trim()"
 								@click="stage('update-documents', { collection: docsCollection })">
