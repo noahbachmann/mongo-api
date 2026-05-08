@@ -17,7 +17,10 @@ async function apiFetch<T>(path: string, init: Omit<RequestInit, 'body'> & { que
 		body: body !== undefined ? JSON.stringify(body) : undefined,
 		headers: body !== undefined ? { 'Content-Type': 'application/json', ...rest.headers } : rest.headers,
 	})
-	if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+	if (!res.ok) {
+		const body = await res.text().catch(() => '')
+		throw new Error(body || `${res.status} ${res.statusText}`)
+	}
 	const text = await res.text()
 	return (text ? JSON.parse(text) : undefined) as T
 }

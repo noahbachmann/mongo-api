@@ -1,5 +1,5 @@
 <script setup lang="ts">
-	import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+	import { ref, triggerRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 	import { useMongoApi } from '../composables/useMongoApi'
 	import { useCurrentDb } from '../composables/useCurrentDb'
 	import { stringifyNames } from '../utils/stringifyNames'
@@ -234,6 +234,7 @@
 		} catch (err) {
 			refreshEntry.output = err instanceof Error ? err.message : String(err)
 			refreshEntry.error = true
+			triggerRef(history)
 		}
 		await nextTick()
 		scrollToBottom()
@@ -286,6 +287,7 @@
 		} catch (err: unknown) {
 			entry.output = err instanceof Error ? err.message : String(err)
 			entry.error = true
+			triggerRef(history)
 			if (spec.keepJsonOnSubmit) command.value = cmd
 		} finally {
 			running.value = false
