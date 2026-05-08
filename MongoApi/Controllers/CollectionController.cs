@@ -137,7 +137,7 @@ public class CollectionController(MongoDBService dbService) : ControllerBase
         try
         {
             var modified = await _mongoDBService.UpdateDocumentByIdAsync(name, json.ToString()!, id, db);
-            if (modified == 0) return NotFound(new { error = "Document not found." });
+            if (modified == 0) return NotFound(new { error = "No documents found or modified." });
             return Ok(new { message = "Document updated.", modifiedCount = modified });
         }
         catch (Exception ex)
@@ -155,7 +155,7 @@ public class CollectionController(MongoDBService dbService) : ControllerBase
         try
         {
             var modified = await _mongoDBService.UpdateDocumentAsync(name, json.ToString()!, filter?.ToString(), db);
-            if (modified == 0) return NotFound(new { error = "Document not found." });
+            if (modified == 0) return NotFound(new { error = "Document not found or not modified" });
             return Ok(new { message = "Document updated.", modifiedCount = modified });
         }
         catch (Exception ex)

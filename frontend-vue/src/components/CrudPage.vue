@@ -43,7 +43,7 @@
 
 	const canRun = computed(() => Boolean(currentDb.value && selectedCollection.value && !running.value))
 	const hasBody = computed(() => buildBody() !== '{}')
-	const hasFilterId = computed(() => filterPairs.value.some((p) => p.key.trim() === '_id' && p.value.trim()))
+	const hasFilterId = computed(() => filterPairs.value.some((p) => p.key.trim() === 'id' && p.value.trim()))
 
 	watch(collections, (cols) => {
 		if (selectedCollection.value && !cols.includes(selectedCollection.value)) {
@@ -153,11 +153,11 @@
 				type="button"
 				class="btn btn-cmd btn-danger"
 				:disabled="!canRun || !hasFilterId"
-				:title="!hasFilterId ? 'add _id to filter' : ''"
+				:title="!hasFilterId ? 'add id to filter' : ''"
 				@click="
 					stage('delete-document', {
 						collection: selectedCollection,
-						id: filterPairs.find((p) => p.key.trim() === '_id')?.value.trim(),
+						id: filterPairs.find((p) => p.key.trim() === 'id')?.value.trim(),
 					})
 				">
 				deleteOne
@@ -165,7 +165,8 @@
 			<button
 				type="button"
 				class="btn btn-cmd btn-danger"
-				:disabled="!canRun"
+				:disabled="!canRun || hasFilterId"
+				:title="hasFilterId ? 'id in filter' : ''"
 				@click="stage('delete-documents', { collection: selectedCollection, filter: buildFilter() })">
 				deleteMany
 			</button>

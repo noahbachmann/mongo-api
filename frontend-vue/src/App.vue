@@ -132,7 +132,7 @@
 		},
 		'delete-document': {
 			danger: true,
-			preview: (cmd) => `db.${cmd.collection}.deleteOne({_id: "${cmd.id}"})`,
+			preview: (cmd) => `db.${cmd.collection}.deleteOne({id: "${cmd.id}"})`,
 			run: (cmd) => api.deleteDocument(cmd.collection!, cmd.id!),
 			validate: (cmd) => Boolean(cmd.collection && cmd.id),
 			refresh: 'docs',
