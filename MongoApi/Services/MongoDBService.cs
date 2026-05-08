@@ -155,6 +155,22 @@ public class MongoDBService(IMongoClient mongoClient, string defaultDatabase)
         return result.DeletedCount;
     }
 
+    public async Task<long> DeleteDocumentsAsync(
+        string collectionName,
+        string? filter,
+        string? dbName = null)
+    {
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
+        var collection = db.GetCollection<BsonDocument>(collectionName);
+
+        var filterDoc = string.IsNullOrEmpty(filter)
+            ? FilterDefinition<BsonDocument>.Empty
+            : new BsonDocumentFilterDefinition<BsonDocument>(BsonDocument.Parse(filter));
+
+        var result = await collection.DeleteManyAsync(filterDoc);
+        return result.DeletedCount;
+    }
+
     public async Task<long> CountDocumentsAsync(
         string collectionName,
         string? dbName = null,

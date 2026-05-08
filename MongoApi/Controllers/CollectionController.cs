@@ -187,4 +187,22 @@ public class CollectionController(MongoDBService dbService) : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    [HttpDelete("{name}/documents")]
+    public async Task<IActionResult> DeleteDocuments(
+        string name,
+        [FromQuery] string? filter = null,
+        [FromQuery] string? db = null)
+    {
+        try
+        {
+            var modified = await _mongoDBService.DeleteDocumentsAsync(name, filter?.ToString(), db);
+            if (modified == 0) return NotFound(new { error = "Document not found." });
+            return Ok(new { message = "Document updated.", modifiedCount = modified });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }
