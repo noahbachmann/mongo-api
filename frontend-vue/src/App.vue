@@ -47,6 +47,10 @@
 		history.value = [...history.value]
 	}
 
+	function clearHistory() {
+		history.value = []
+	}
+
 	const commands: Record<CommandKind, CommandSpec> = {
 		'show-dbs': {
 			needsCurrentDb: false,
@@ -316,7 +320,7 @@
 </script>
 
 <template>
-	<div class="min-h-screen bg-gray-700 flex items-center justify-center p-0 sm:p-12 md:p-24">
+	<div class="min-h-screen bg-black/95 flex items-center justify-center p-0 sm:p-12 md:p-24">
 		<div
 			class="w-full max-w-4xl sm:rounded-md border border-secondary/15 bg-secondary text-surface font-mono shadow-lg overflow-hidden">
 			<!-- header -->
@@ -343,7 +347,6 @@
 					</button>
 				</div>
 			</div>
-
 			<!-- terminal -->
 			<TerminalOutput
 				ref="terminalRef"
@@ -355,7 +358,8 @@
 				:running="running"
 				@submit="submit()"
 				@edit-doc="onEditDoc"
-				@delete-doc="onDeleteDoc" />
+				@delete-doc="onDeleteDoc"
+				@clear-history="clearHistory" />
 
 			<!-- pages -->
 			<GeneralPage

@@ -46,5 +46,17 @@
 	.input-cli {
 		@apply bg-secondary text-surface border border-surface/20 rounded-sm px-6 py-2 text-sm focus:outline-none focus:border-bright-primary disabled:cursor-not-allowed;
 	}
+
+	.scrollbar-styled::-webkit-scrollbar {
+		@apply w-9;
+	}
+
+	.scrollbar-styled::-webkit-scrollbar-track {
+		@apply bg-primary hover:cursor-grab active:cursor-grabbing;
+	}
+
+	.scrollbar-styled::-webkit-scrollbar-thumb {
+		@apply bg-accent hover:cursor-grab active:cursor-grabbing;
+	}
 }
 
