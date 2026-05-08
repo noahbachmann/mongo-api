@@ -67,12 +67,24 @@ export function useMongoApi() {
 		insertDocument: (name: string, body: unknown) =>
 			request(`${collectionURL(name)}/documents`, { method: 'POST', body }),
 		getDocument: (name: string, id: string) => request(documentURL(name, id)),
-		updateDocument: (name: string, body: unknown, filter?: string) =>
-			request(`${collectionURL(name)}/documents/single`, {
+		updateDocument: (name: string, body: any, filter?: string) => {
+			const parsed = filter ? JSON.parse(filter) : undefined
+
+			const id = parsed?.id
+
+			if (id) {
+				return request(`${collectionURL(name)}/documents/${id}`, {
+					method: 'PATCH',
+					body,
+				})
+			}
+
+			return request(`${collectionURL(name)}/documents/single`, {
 				method: 'PATCH',
 				body,
 				query: filter ? { filter } : undefined,
-			}),
+			})
+		},
 		updateDocuments: (name: string, body: unknown, filter?: string) =>
 			request(`${collectionURL(name)}/documents`, {
 				method: 'PATCH',

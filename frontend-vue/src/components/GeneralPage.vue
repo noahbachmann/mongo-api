@@ -79,21 +79,15 @@
 		} catch {
 			return
 		}
-		const { _id, ...rest } = parsed
-		const filter = JSON.stringify({ _id })
+		const {
+			_id: { $oid: id },
+			...rest
+		} = parsed
+		const filter = JSON.stringify({ id })
 		const body = JSON.stringify(rest, null, 2)
 		docsFilter.value = filter
 		jsonInput.value = body
 		docsCollection.value = collection
-		stage('update-document', {
-			collection,
-			filter,
-			body,
-			afterSuccess: () => {
-				jsonInput.value = ''
-				docsFilter.value = ''
-			},
-		})
 		nextTick(() => jsonInputEl.value?.focus())
 	}
 

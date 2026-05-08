@@ -28,19 +28,17 @@
 		} catch {
 			return
 		}
-		const { _id, ...rest } = parsed
-		filterPairs.value = [{ key: '_id', value: String(_id) }]
+		const {
+			_id: { $oid: id },
+			...rest
+		} = parsed
+		filterPairs.value = [{ key: 'id', value: String(id) }]
 		const restPairs = Object.entries(rest).map(([key, value]) => ({
 			key,
 			value: typeof value === 'string' ? value : JSON.stringify(value),
 		}))
 		bodyPairs.value = restPairs.length ? restPairs : [{ key: '', value: '' }]
 		selectedCollection.value = collection
-		stage('update-document', {
-			collection,
-			filter: JSON.stringify({ _id }),
-			body: buildJsonFromPairs(restPairs.length ? restPairs : [{ key: '', value: '' }]),
-		})
 	}
 
 	const canRun = computed(() => Boolean(currentDb.value && selectedCollection.value && !running.value))

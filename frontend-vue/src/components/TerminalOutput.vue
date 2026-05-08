@@ -1,29 +1,29 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+	import { ref } from 'vue'
 
-defineProps<{
-	history: HistoryEntry[]
-	commandPreview: string
-	hasCommand: boolean
-	isDanger: boolean
-	canSubmit: boolean
-	running: boolean
-}>()
+	defineProps<{
+		history: HistoryEntry[]
+		commandPreview: string
+		hasCommand: boolean
+		isDanger: boolean
+		canSubmit: boolean
+		running: boolean
+	}>()
 
-const emit = defineEmits<{
-	submit: []
-	'edit-doc': [collection: string, doc: string]
-	'delete-doc': [collection: string, id: string]
-}>()
+	const emit = defineEmits<{
+		submit: []
+		'edit-doc': [collection: string, doc: string]
+		'delete-doc': [collection: string, id: string]
+	}>()
 
-const terminalEl = ref<HTMLElement | null>(null)
+	const terminalEl = ref<HTMLElement | null>(null)
 
-function scrollToBottom() {
-	const el = terminalEl.value
-	if (el) el.scrollTop = el.scrollHeight
-}
+	function scrollToBottom() {
+		const el = terminalEl.value
+		if (el) el.scrollTop = el.scrollHeight
+	}
 
-defineExpose({ scrollToBottom })
+	defineExpose({ scrollToBottom })
 </script>
 
 <template>
@@ -80,7 +80,7 @@ defineExpose({ scrollToBottom })
 							type="button"
 							data-cy="doc-del"
 							class="btn-inline"
-							@click="emit('delete-doc', entry.documents!.collection, JSON.parse(doc)._id)">
+							@click="emit('delete-doc', entry.documents!.collection, JSON.parse(doc)._id.$oid)">
 							del
 						</button>
 					</div>
@@ -111,3 +111,4 @@ defineExpose({ scrollToBottom })
 		</div>
 	</div>
 </template>
+

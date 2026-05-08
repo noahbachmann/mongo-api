@@ -123,6 +123,23 @@ public class MongoDBService(IMongoClient mongoClient, string defaultDatabase)
         return result.ModifiedCount;
     }
 
+    public async Task<long> UpdateDocumentByIdAsync(
+        string collectionName,
+        string json,
+        string id,
+        string? dbName)
+    {
+        var db = _mongoClient.GetDatabase(dbName ?? _defaultDatabase);
+        var collection = db.GetCollection<BsonDocument>(collectionName);
+
+
+        var update = new BsonDocument("$set", BsonDocument.Parse(json));
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", ObjectId.Parse(id));
+
+        var result = await collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount;
+    }
+
     public async Task<long> UpdateDocumentsAsync(
         string collectionName,
         string json,

@@ -127,6 +127,24 @@ public class CollectionController(MongoDBService dbService) : ControllerBase
     /// <summary>
     /// Update a document by ID
     /// </summary>
+    [HttpPatch("{name}/documents/{id}")]
+    public async Task<IActionResult> UpdateDocumentById(
+        string name,
+        string id,
+        [FromBody] object json,
+        [FromQuery] string? db = null)
+    {
+        try
+        {
+            var modified = await _mongoDBService.UpdateDocumentByIdAsync(name, json.ToString()!, id, db);
+            if (modified == 0) return NotFound(new { error = "Document not found." });
+            return Ok(new { message = "Document updated.", modifiedCount = modified });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
     [HttpPatch("{name}/documents/single")]
     public async Task<IActionResult> UpdateDocument(
         string name,
