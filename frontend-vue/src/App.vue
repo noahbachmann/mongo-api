@@ -330,14 +330,14 @@
 					<button
 						type="button"
 						class="btn btn-cmd"
-						:class="activePage === 'general' ? 'border-bright-primary text-bright-primary' : ''"
+						:class="activePage === 'general' ? 'border-bright-primary! text-bright-primary!' : ''"
 						@click="activePage = 'general'">
 						General
 					</button>
 					<button
 						type="button"
 						class="btn btn-cmd"
-						:class="activePage === 'crud' ? 'border-bright-primary text-bright-primary' : ''"
+						:class="activePage === 'crud' ? 'border-bright-primary! text-bright-primary!' : ''"
 						@click="activePage = 'crud'">
 						CRUD
 					</button>

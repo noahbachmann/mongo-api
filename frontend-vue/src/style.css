@@ -24,7 +24,7 @@
 
 @layer utility {
 	.btn {
-		@apply px-12 py-6 rounded-sm text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+		@apply px-12 py-6 rounded-sm text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:cursor-pointer;
 	}
 
 	.btn-cmd {
@@ -47,3 +47,4 @@
 		@apply bg-secondary text-surface border border-surface/20 rounded-sm px-6 py-2 text-sm focus:outline-none focus:border-bright-primary disabled:cursor-not-allowed;
 	}
 }
+
