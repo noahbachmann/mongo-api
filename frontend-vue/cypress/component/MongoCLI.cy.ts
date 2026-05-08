@@ -1,4 +1,4 @@
-import MongoCLI from '../../src/components/MongoCLI.vue'
+import MongoCLI from '../../src/components/GeneralPage.vue'
 import { useCurrentDb } from '../../src/composables/useCurrentDb'
 
 const dbList = [{ name: 'project' }, { name: 'admin' }]

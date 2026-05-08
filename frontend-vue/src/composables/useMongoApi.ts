@@ -77,6 +77,11 @@ export function useMongoApi() {
 				query: filter ? { filter } : undefined,
 			}),
 		deleteDocument: (name: string, id: string) => request(documentURL(name, id), { method: 'DELETE' }),
+		deleteDocuments: (name: string, filter?: string) =>
+			request(`${collectionURL(name)}/documents`, {
+				method: 'DELETE',
+				query: filter ? { filter } : undefined,
+			}),
 
 		// MongoDB has no explicit create-db; materialize one by creating its first collection.
 		createDbWithCollection: (dbName: string, collName: string) =>
