@@ -26,3 +26,4 @@ export function useShell(): ShellContext {
 	if (!ctx) throw new Error('useShell() must be used inside the shell provider')
 	return ctx
 }
+

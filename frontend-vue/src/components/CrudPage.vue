@@ -1,59 +1,59 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useCurrentDb } from '../composables/useCurrentDb'
-import { useShell } from '../composables/useShell'
-import { buildJsonFromPairs } from '../utils/buildJsonFromPairs'
-import KeyValueBuilder from './KeyValueBuilder.vue'
+	import { ref, computed, watch } from 'vue'
+	import { useCurrentDb } from '../composables/useCurrentDb'
+	import { useShell } from '../composables/useShell'
+	import { buildJsonFromPairs } from '../utils/buildJsonFromPairs'
+	import KeyValueBuilder from './KeyValueBuilder.vue'
 
-const currentDb = useCurrentDb()
-const { dbs, collections, running, stage } = useShell()
+	const currentDb = useCurrentDb()
+	const { dbs, collections, running, stage } = useShell()
 
-const selectedCollection = ref('')
-const filterPairs = ref([{ key: '', value: '' }])
-const bodyPairs = ref([{ key: '', value: '' }])
+	const selectedCollection = ref('')
+	const filterPairs = ref([{ key: '', value: '' }])
+	const bodyPairs = ref([{ key: '', value: '' }])
 
-function buildFilter(): string | undefined {
-	const json = buildJsonFromPairs(filterPairs.value)
-	return json === '{}' ? undefined : json
-}
-
-function buildBody(): string {
-	return buildJsonFromPairs(bodyPairs.value)
-}
-
-function onEditDoc(collection: string, doc: string) {
-	let parsed: Record<string, unknown> = {}
-	try {
-		parsed = JSON.parse(doc)
-	} catch {
-		return
+	function buildFilter(): string | undefined {
+		const json = buildJsonFromPairs(filterPairs.value)
+		return json === '{}' ? undefined : json
 	}
-	const { _id, ...rest } = parsed
-	filterPairs.value = [{ key: '_id', value: String(_id) }]
-	const restPairs = Object.entries(rest).map(([key, value]) => ({
-		key,
-		value: typeof value === 'string' ? value : JSON.stringify(value),
-	}))
-	bodyPairs.value = restPairs.length ? restPairs : [{ key: '', value: '' }]
-	selectedCollection.value = collection
-	stage('update-document', {
-		collection,
-		filter: JSON.stringify({ _id }),
-		body: buildJsonFromPairs(restPairs.length ? restPairs : [{ key: '', value: '' }]),
+
+	function buildBody(): string {
+		return buildJsonFromPairs(bodyPairs.value)
+	}
+
+	function onEditDoc(collection: string, doc: string) {
+		let parsed: Record<string, unknown> = {}
+		try {
+			parsed = JSON.parse(doc)
+		} catch {
+			return
+		}
+		const { _id, ...rest } = parsed
+		filterPairs.value = [{ key: '_id', value: String(_id) }]
+		const restPairs = Object.entries(rest).map(([key, value]) => ({
+			key,
+			value: typeof value === 'string' ? value : JSON.stringify(value),
+		}))
+		bodyPairs.value = restPairs.length ? restPairs : [{ key: '', value: '' }]
+		selectedCollection.value = collection
+		stage('update-document', {
+			collection,
+			filter: JSON.stringify({ _id }),
+			body: buildJsonFromPairs(restPairs.length ? restPairs : [{ key: '', value: '' }]),
+		})
+	}
+
+	const canRun = computed(() => Boolean(currentDb.value && selectedCollection.value && !running.value))
+	const hasBody = computed(() => buildBody() !== '{}')
+	const hasFilterId = computed(() => filterPairs.value.some((p) => p.key.trim() === '_id' && p.value.trim()))
+
+	watch(collections, (cols) => {
+		if (selectedCollection.value && !cols.includes(selectedCollection.value)) {
+			selectedCollection.value = ''
+		}
 	})
-}
 
-const canRun = computed(() => Boolean(currentDb.value && selectedCollection.value && !running.value))
-const hasBody = computed(() => buildBody() !== '{}')
-const hasFilterId = computed(() => filterPairs.value.some((p) => p.key.trim() === '_id' && p.value.trim()))
-
-watch(collections, (cols) => {
-	if (selectedCollection.value && !cols.includes(selectedCollection.value)) {
-		selectedCollection.value = ''
-	}
-})
-
-defineExpose({ onEditDoc })
+	defineExpose({ onEditDoc })
 </script>
 
 <template>
@@ -137,14 +137,18 @@ defineExpose({ onEditDoc })
 				type="button"
 				class="btn btn-cmd"
 				:disabled="!canRun || !hasBody"
-				@click="stage('update-document', { collection: selectedCollection, filter: buildFilter(), body: buildBody() })">
+				@click="
+					stage('update-document', { collection: selectedCollection, filter: buildFilter(), body: buildBody() })
+				">
 				updateOne
 			</button>
 			<button
 				type="button"
 				class="btn btn-cmd"
 				:disabled="!canRun || !hasBody"
-				@click="stage('update-documents', { collection: selectedCollection, filter: buildFilter(), body: buildBody() })">
+				@click="
+					stage('update-documents', { collection: selectedCollection, filter: buildFilter(), body: buildBody() })
+				">
 				updateMany
 			</button>
 			<button
@@ -152,7 +156,12 @@ defineExpose({ onEditDoc })
 				class="btn btn-cmd btn-danger"
 				:disabled="!canRun || !hasFilterId"
 				:title="!hasFilterId ? 'add _id to filter' : ''"
-				@click="stage('delete-document', { collection: selectedCollection, id: filterPairs.find(p => p.key.trim() === '_id')?.value.trim() })">
+				@click="
+					stage('delete-document', {
+						collection: selectedCollection,
+						id: filterPairs.find((p) => p.key.trim() === '_id')?.value.trim(),
+					})
+				">
 				deleteOne
 			</button>
 			<button
@@ -165,3 +174,4 @@ defineExpose({ onEditDoc })
 		</div>
 	</div>
 </template>
+

@@ -7,7 +7,10 @@ type RequestOpts = {
 	query?: Record<string, unknown>
 }
 
-async function apiFetch<T>(path: string, init: Omit<RequestInit, 'body'> & { query?: Record<string, unknown>; body?: unknown } = {}): Promise<T> {
+async function apiFetch<T>(
+	path: string,
+	init: Omit<RequestInit, 'body'> & { query?: Record<string, unknown>; body?: unknown } = {},
+): Promise<T> {
 	const base = import.meta.env.API_BASE ?? ''
 	const { query, body, ...rest } = init
 	const url = new URL(path, base || location.origin)
@@ -88,3 +91,4 @@ export function useMongoApi() {
 			apiFetch(collectionURL(collName), { method: 'POST', query: { db: dbName } }),
 	}
 }
+

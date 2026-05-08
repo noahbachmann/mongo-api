@@ -1,113 +1,113 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
-import { useCurrentDb } from '../composables/useCurrentDb'
-import { useShell } from '../composables/useShell'
+	import { ref, watch, nextTick } from 'vue'
+	import { useCurrentDb } from '../composables/useCurrentDb'
+	import { useShell } from '../composables/useShell'
 
-const currentDb = useCurrentDb()
-const { dbs, collections, running, command, stage } = useShell()
+	const currentDb = useCurrentDb()
+	const { dbs, collections, command, stage } = useShell()
 
-const jsonInputEl = ref<HTMLTextAreaElement | null>(null)
+	const jsonInputEl = ref<HTMLTextAreaElement | null>(null)
 
-const newDbName = ref('')
-const newCollectionInput = ref('')
-const dropDbTarget = ref('')
-const dropCollectionTarget = ref('')
-const docsCollection = ref('')
-const docsFilter = ref('')
-const docsLimit = ref(50)
-const docsSkip = ref(0)
-const jsonInput = ref('')
+	const newDbName = ref('')
+	const newCollectionInput = ref('')
+	const dropDbTarget = ref('')
+	const dropCollectionTarget = ref('')
+	const docsCollection = ref('')
+	const docsFilter = ref('')
+	const docsLimit = ref(50)
+	const docsSkip = ref(0)
+	const jsonInput = ref('')
 
-function stageCreateDb() {
-	stage('create-db', {
-		db: newDbName.value,
-		collection: newCollectionInput.value,
-		afterSuccess: () => {
-			newDbName.value = ''
-			newCollectionInput.value = ''
-		},
-	})
-}
-
-function stageCreateCollection() {
-	stage('create-collection', {
-		collection: newCollectionInput.value,
-		afterSuccess: () => {
-			newCollectionInput.value = ''
-		},
-	})
-}
-
-function stageInsert() {
-	stage('insert-document', {
-		collection: docsCollection.value,
-		body: jsonInput.value,
-		afterSuccess: () => {
-			jsonInput.value = ''
-		},
-	})
-}
-
-function stageUpdateOne() {
-	stage('update-document', {
-		collection: docsCollection.value,
-		filter: docsFilter.value || undefined,
-		body: jsonInput.value,
-		afterSuccess: () => {
-			jsonInput.value = ''
-			docsFilter.value = ''
-		},
-	})
-}
-
-function stageUpdateMany() {
-	stage('update-documents', {
-		collection: docsCollection.value,
-		filter: docsFilter.value || undefined,
-		body: jsonInput.value,
-		afterSuccess: () => {
-			jsonInput.value = ''
-			docsFilter.value = ''
-		},
-	})
-}
-
-function onEditDoc(collection: string, doc: string) {
-	let parsed: Record<string, unknown> = {}
-	try {
-		parsed = JSON.parse(doc)
-	} catch {
-		return
+	function stageCreateDb() {
+		stage('create-db', {
+			db: newDbName.value,
+			collection: newCollectionInput.value,
+			afterSuccess: () => {
+				newDbName.value = ''
+				newCollectionInput.value = ''
+			},
+		})
 	}
-	const { _id, ...rest } = parsed
-	const filter = JSON.stringify({ _id })
-	const body = JSON.stringify(rest, null, 2)
-	docsFilter.value = filter
-	jsonInput.value = body
-	docsCollection.value = collection
-	stage('update-document', {
-		collection,
-		filter,
-		body,
-		afterSuccess: () => {
-			jsonInput.value = ''
-			docsFilter.value = ''
-		},
+
+	function stageCreateCollection() {
+		stage('create-collection', {
+			collection: newCollectionInput.value,
+			afterSuccess: () => {
+				newCollectionInput.value = ''
+			},
+		})
+	}
+
+	function stageInsert() {
+		stage('insert-document', {
+			collection: docsCollection.value,
+			body: jsonInput.value,
+			afterSuccess: () => {
+				jsonInput.value = ''
+			},
+		})
+	}
+
+	function stageUpdateOne() {
+		stage('update-document', {
+			collection: docsCollection.value,
+			filter: docsFilter.value || undefined,
+			body: jsonInput.value,
+			afterSuccess: () => {
+				jsonInput.value = ''
+				docsFilter.value = ''
+			},
+		})
+	}
+
+	function stageUpdateMany() {
+		stage('update-documents', {
+			collection: docsCollection.value,
+			filter: docsFilter.value || undefined,
+			body: jsonInput.value,
+			afterSuccess: () => {
+				jsonInput.value = ''
+				docsFilter.value = ''
+			},
+		})
+	}
+
+	function onEditDoc(collection: string, doc: string) {
+		let parsed: Record<string, unknown> = {}
+		try {
+			parsed = JSON.parse(doc)
+		} catch {
+			return
+		}
+		const { _id, ...rest } = parsed
+		const filter = JSON.stringify({ _id })
+		const body = JSON.stringify(rest, null, 2)
+		docsFilter.value = filter
+		jsonInput.value = body
+		docsCollection.value = collection
+		stage('update-document', {
+			collection,
+			filter,
+			body,
+			afterSuccess: () => {
+				jsonInput.value = ''
+				docsFilter.value = ''
+			},
+		})
+		nextTick(() => jsonInputEl.value?.focus())
+	}
+
+	watch(command, (cmd) => {
+		if (cmd?.kind !== 'drop-collection') dropCollectionTarget.value = ''
+		if (cmd?.kind !== 'drop-db') dropDbTarget.value = ''
 	})
-	nextTick(() => jsonInputEl.value?.focus())
-}
 
-watch(command, (cmd) => {
-	if (cmd?.kind !== 'drop-collection') dropCollectionTarget.value = ''
-	if (cmd?.kind !== 'drop-db') dropDbTarget.value = ''
-})
+	watch(collections, (cols) => {
+		if (docsCollection.value && !cols.includes(docsCollection.value)) docsCollection.value = ''
+		if (dropCollectionTarget.value && !cols.includes(dropCollectionTarget.value)) dropCollectionTarget.value = ''
+	})
 
-watch(collections, (cols) => {
-	if (docsCollection.value && !cols.includes(docsCollection.value)) docsCollection.value = ''
-	if (dropCollectionTarget.value && !cols.includes(dropCollectionTarget.value)) dropCollectionTarget.value = ''
-})
-
-defineExpose({ onEditDoc })
+	defineExpose({ onEditDoc })
 </script>
 
 <template>
@@ -305,7 +305,14 @@ defineExpose({ onEditDoc })
 						data-cy="find-btn"
 						class="btn btn-cmd"
 						:disabled="!currentDb || !docsCollection"
-						@click="stage('show-documents', { collection: docsCollection, filter: docsFilter || undefined, limit: docsLimit, skip: docsSkip })">
+						@click="
+							stage('show-documents', {
+								collection: docsCollection,
+								filter: docsFilter || undefined,
+								limit: docsLimit,
+								skip: docsSkip,
+							})
+						">
 						find
 					</button>
 					<button
@@ -357,3 +364,4 @@ defineExpose({ onEditDoc })
 		</div>
 	</div>
 </template>
+

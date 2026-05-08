@@ -30,3 +30,4 @@ type Command = {
 	skip?: number
 	afterSuccess?: () => void
 }
+
