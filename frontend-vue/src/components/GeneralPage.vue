@@ -162,7 +162,7 @@
 		</div>
 
 		<!-- Separator: DB → Collection -->
-		<label class="flex items-center gap-8">
+		<label class="flex items-center gap-8 pt-10 pb-2">
 			<div class="flex-1 border-t border-surface/20" />
 			<span class="text-surface/40 uppercase">current database:</span>
 			<select
@@ -234,7 +234,7 @@
 		</div>
 
 		<!-- Separator: Collection → Document -->
-		<label class="flex items-center gap-8">
+		<label class="flex items-center gap-8 pt-10">
 			<div class="flex-1 border-t border-surface/20" />
 			<span class="text-surface/40 uppercase">current collection:</span>
 			<select
@@ -256,11 +256,11 @@
 		<div
 			class="flex flex-col gap-8"
 			:class="!docsCollection ? 'opacity-50' : ''">
-			<span class="text-surface/40 text-xs uppercase tracking-wide">Document</span>
+			<span class="text-surface/80 text-xs uppercase tracking-wide">Document</span>
 
 			<!-- limit & skip -->
 			<div class="flex items-center gap-8">
-				<label class="flex items-center gap-4 text-surface/70 text-sm">
+				<label class="flex items-center gap-4 text-surface/70 text-xs uppercase">
 					limit:
 					<input
 						v-model.number="docsLimit"
@@ -270,7 +270,7 @@
 						min="1"
 						class="input-cli w-60" />
 				</label>
-				<label class="flex items-center gap-4 text-surface/70 text-sm">
+				<label class="flex items-center gap-4 uppercase text-surface/70 text-xs">
 					skip:
 					<input
 						v-model.number="docsSkip"
@@ -285,7 +285,7 @@
 			<!-- filter + input grid -->
 			<div class="grid grid-cols-[1fr_6fr_3fr] gap-8 items-start">
 				<!-- Row 1: filter -->
-				<span class="text-surface/70 text-sm pt-6">filter:</span>
+				<span class="text-surface/70 text-sm uppercase tracking-wide pt-6">filter:</span>
 				<textarea
 					v-model="docsFilter"
 					data-cy="docs-filter"
@@ -319,7 +319,7 @@
 				</div>
 
 				<!-- Row 2: input -->
-				<span class="text-surface/70 text-sm pt-6">input:</span>
+				<span class="text-surface/70 text-sm pt-6 tracking-wide uppercase">body:</span>
 				<textarea
 					ref="jsonInputEl"
 					v-model="jsonInput"

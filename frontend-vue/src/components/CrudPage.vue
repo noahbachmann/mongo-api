@@ -97,7 +97,7 @@
 		<div
 			class="flex flex-col gap-6"
 			:class="!canRun ? 'opacity-50' : ''">
-			<span class="text-surface/40 text-xs uppercase tracking-wide">Filter</span>
+			<span class="text-surface/40 text-sm uppercase tracking-wide">Filter</span>
 			<KeyValueBuilder
 				v-model="filterPairs"
 				:disabled="!canRun" />
@@ -107,7 +107,7 @@
 		<div
 			class="flex flex-col gap-6"
 			:class="!canRun ? 'opacity-50' : ''">
-			<span class="text-surface/40 text-xs uppercase tracking-wide">Body</span>
+			<span class="text-surface/40 text-sm uppercase tracking-wide">Body</span>
 			<KeyValueBuilder
 				v-model="bodyPairs"
 				:disabled="!canRun" />
