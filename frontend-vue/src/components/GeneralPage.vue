@@ -108,30 +108,31 @@
 	<!-- command bar -->
 	<div class="px-16 py-12 bg-primary/15 border-t border-surface/10 flex flex-col gap-10">
 		<!-- DB row -->
-		<div class="flex flex-wrap items-center gap-8">
-			<span class="text-surface/40 text-xs uppercase tracking-wide w-80">db</span>
+		<div class="flex flex-wrap max-sm:justify-center items-center gap-10">
+			<div class="flex max-sm:flex-col w-full max-sm:items-center max-sm:gap-4">
+				<span class="text-surface text-sm uppercase tracking-wide sm:w-80">databases</span>
 
-			<button
-				type="button"
-				data-cy="show-dbs-btn"
-				class="btn btn-cmd"
-				@click="stage('show-dbs')">
-				show dbs
-			</button>
-
-			<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
-				<span class="text-surface/70 text-sm">create</span>
+				<button
+					type="button"
+					data-cy="show-dbs-btn"
+					class="btn btn-cmd max-sm:w-200"
+					@click="stage('show-dbs')">
+					show dbs
+				</button>
+			</div>
+			<div class="flex max-sm:flex-col sm:items-center gap-6 p-8 rounded-sm border border-surface/20">
+				<span class="text-surface/70 text-sm self-center">create db</span>
 				<input
 					v-model="newDbName"
 					data-cy="create-db-name"
 					placeholder="database"
-					class="input-cli w-100"
+					class="input-cli sm:w-100"
 					@keydown.enter.prevent="stageCreateDb()" />
 				<input
 					v-model="newCollectionInput"
 					data-cy="create-db-coll"
 					placeholder="collection"
-					class="input-cli w-120"
+					class="input-cli sm:w-120"
 					@keydown.enter.prevent="stageCreateDb()" />
 				<button
 					type="button"
@@ -143,7 +144,7 @@
 				</button>
 			</div>
 
-			<div class="flex items-center gap-6 px-8 py-10 rounded-sm border border-surface/20">
+			<div class="flex items-center gap-6 p-8 rounded-sm border border-surface/20">
 				<span class="text-surface/70 text-sm">delete db</span>
 				<select
 					v-model="dropDbTarget"
@@ -162,47 +163,52 @@
 		</div>
 
 		<!-- Separator: DB → Collection -->
-		<label class="flex items-center gap-8 pt-10 pb-2">
-			<div class="flex-1 border-t border-surface/20" />
-			<span class="text-surface/40 uppercase">current database:</span>
-			<select
-				v-model="currentDb"
-				data-cy="current-db"
-				class="input-cli">
-				<option value="">— select db —</option>
-				<option
-					v-for="d in dbs"
-					:key="d"
-					:value="d">
-					{{ d }}
-				</option>
-			</select>
+		<label class="flex max-sm:flex-col items-end sm:items-center gap-8 pt-10 pb-2">
+			<div class="max-sm:w-full flex-1 border-t border-surface/20" />
+			<div class="flex gap-6 items-center">
+				<span class="text-surface/40 max-sm:text-xs uppercase">current database:</span>
+				<select
+					v-model="currentDb"
+					data-cy="current-db"
+					class="input-cli">
+					<option value="">— select db —</option>
+					<option
+						v-for="d in dbs"
+						:key="d"
+						:value="d">
+						{{ d }}
+					</option>
+				</select>
+			</div>
+			<div class="max-sm:w-full sm:hidden flex-1 border-t border-surface/20" />
 		</label>
 
 		<!-- COLLECTION row -->
 		<div
-			class="flex flex-wrap items-center gap-8"
+			class="flex flex-col items-center gap-10"
 			:class="!currentDb ? 'opacity-50' : ''">
-			<span class="text-surface/40 text-xs uppercase tracking-wide w-80">Collection</span>
+			<div class="flex max-sm:flex-col max-sm:gap-4 w-full max-sm:items-center">
+				<p class="text-surface text-sm uppercase tracking-wide w-80">Collections</p>
 
-			<button
-				type="button"
-				data-cy="show-colls-btn"
-				class="btn btn-cmd"
-				:disabled="!currentDb"
-				:title="!currentDb ? 'select a db first' : ''"
-				@click="stage('show-collections')">
-				show collections
-			</button>
+				<button
+					type="button"
+					data-cy="show-colls-btn"
+					class="btn btn-cmd max-sm:w-200"
+					:disabled="!currentDb"
+					:title="!currentDb ? 'select a db first' : ''"
+					@click="stage('show-collections')">
+					show collections
+				</button>
+			</div>
 
-			<div class="flex items-center gap-6 px-8 py-4 rounded-sm border border-surface/20">
-				<span class="text-surface/70 text-sm">create</span>
+			<div class="flex max-sm:flex-col gap-6 p-8 rounded-sm border border-surface/20">
+				<span class="text-surface/70 text-sm self-center">create collection</span>
 				<input
 					v-model="newCollectionInput"
 					data-cy="create-coll-input"
 					:disabled="!currentDb"
 					placeholder="collection"
-					class="input-cli w-140"
+					class="input-cli sm:w-140"
 					@keydown.enter.prevent="stageCreateCollection()" />
 				<button
 					type="button"
@@ -234,33 +240,36 @@
 		</div>
 
 		<!-- Separator: Collection → Document -->
-		<label class="flex items-center gap-8 pt-10">
-			<div class="flex-1 border-t border-surface/20" />
-			<span class="text-surface/40 uppercase">current collection:</span>
-			<select
-				v-model="docsCollection"
-				data-cy="current-coll"
-				:disabled="!currentDb || !collections.length"
-				class="input-cli disabled:opacity-40">
-				<option value="">— select coll —</option>
-				<option
-					v-for="c in collections"
-					:key="c"
-					:value="c">
-					{{ c }}
-				</option>
-			</select>
+		<label class="flex max-sm:flex-col items-end sm:items-center gap-8 pt-10 pb-2">
+			<div class="max-sm:w-full flex-1 border-t border-surface/20" />
+			<div class="flex gap-6 items-center">
+				<span class="text-surface/40 max-sm:text-xs uppercase">current collection:</span>
+				<select
+					v-model="docsCollection"
+					data-cy="current-coll"
+					:disabled="!currentDb || !collections.length"
+					class="input-cli disabled:opacity-40">
+					<option value="">— select coll —</option>
+					<option
+						v-for="c in collections"
+						:key="c"
+						:value="c">
+						{{ c }}
+					</option>
+				</select>
+			</div>
+			<div class="max-sm:w-full sm:hidden flex-1 border-t border-surface/20" />
 		</label>
 
 		<!-- DOCUMENT section -->
 		<div
 			class="flex flex-col gap-8"
 			:class="!docsCollection ? 'opacity-50' : ''">
-			<span class="text-surface/80 text-xs uppercase tracking-wide">Document</span>
+			<span class="text-surface text-sm uppercase tracking-wide max-sm:self-center">Documents</span>
 
 			<!-- limit & skip -->
-			<div class="flex items-center gap-8">
-				<label class="flex items-center gap-4 text-surface/70 text-xs uppercase">
+			<div class="flex items-center gap-8 max-sm:self-center">
+				<label class="flex items-center gap-2 text-surface/70 text-xs uppercase">
 					limit:
 					<input
 						v-model.number="docsLimit"
@@ -270,7 +279,7 @@
 						min="1"
 						class="input-cli w-60" />
 				</label>
-				<label class="flex items-center gap-4 uppercase text-surface/70 text-xs">
+				<label class="flex items-center gap-2 uppercase text-surface/70 text-xs">
 					skip:
 					<input
 						v-model.number="docsSkip"
@@ -283,7 +292,7 @@
 			</div>
 
 			<!-- filter + input grid -->
-			<div class="grid grid-cols-[1fr_6fr_3fr] gap-8 items-start">
+			<div class="grid sm:grid-cols-[1fr_6fr_3fr] gap-8 items-start">
 				<!-- Row 1: filter -->
 				<span class="text-surface/70 text-sm uppercase tracking-wide pt-6">filter:</span>
 				<textarea
