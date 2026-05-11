@@ -12,18 +12,18 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // MongoDB
-builder.Services.Configure<MongoDBSettings>(
-    builder.Configuration.GetSection("MongoDB"));
+builder.Services.AddSingleton(
+    builder.Configuration.GetSection("MongoDB").Get<MongoDBSettings>()!);
 
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
-    var settings = sp.GetRequiredService<IOptions<MongoDBSettings>>().Value;
+    var settings = sp.GetRequiredService<MongoDBSettings>();
     return new MongoClient(settings.ConnectionString);
 });
 
 builder.Services.AddScoped<MongoDBService>(sp =>
 {
-    var settings = sp.GetRequiredService<IOptions<MongoDBSettings>>().Value;
+    var settings = sp.GetRequiredService<MongoDBSettings>();
     var client = sp.GetRequiredService<IMongoClient>();
     return new MongoDBService(client, settings.DatabaseName);
 });
