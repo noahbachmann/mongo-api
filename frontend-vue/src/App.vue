@@ -333,6 +333,7 @@
 				<div class="flex items-center gap-6">
 					<button
 						type="button"
+						data-cy="tab-general"
 						class="btn btn-cmd"
 						:class="activePage === 'general' ? 'border-bright-primary! text-bright-primary!' : ''"
 						@click="activePage = 'general'">
@@ -340,6 +341,7 @@
 					</button>
 					<button
 						type="button"
+						data-cy="tab-crud"
 						class="btn btn-cmd"
 						:class="activePage === 'crud' ? 'border-bright-primary! text-bright-primary!' : ''"
 						@click="activePage = 'crud'">

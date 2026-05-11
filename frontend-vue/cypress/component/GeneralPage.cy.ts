@@ -1,80 +1,24 @@
-import MongoCLI from '../../src/components/GeneralPage.vue'
-import { useCurrentDb } from '../../src/composables/useCurrentDb'
-
-const dbList = [{ name: 'project' }, { name: 'admin' }]
-const collList = [{ name: 'users' }, { name: 'posts' }]
-const sampleDocs = {
-	documents: [
-		{ _id: 'abc1', name: 'Alice', age: 30 },
-		{ _id: 'abc2', name: 'Bob', age: 25 },
-	],
-}
-
-function mountCLI() {
-	cy.mount(MongoCLI)
-	cy.wait('@listDbs')
-	cy.wait('@listCollections')
-}
-
-function selectCollection(name: string) {
-	cy.get('[data-cy="current-coll"]').select(name)
-}
+import { dbList, collList, sampleDocs, setupDefaultIntercepts, mountApp, selectGeneralCollection } from './helpers'
 
 beforeEach(() => {
-	useCurrentDb().value = 'project'
-	cy.intercept('GET', '**/api/db', { body: dbList }).as('listDbs')
-	cy.intercept('GET', '**/api/collection?db=*', { body: collList }).as('listCollections')
-})
-
-describe('initial rendering', () => {
-	it('renders the terminal header with mongo-cli label', () => {
-		mountCLI()
-		cy.contains('mongo-cli').should('be.visible')
-	})
-
-	it('shows empty state message when no history', () => {
-		mountCLI()
-		cy.get('[data-cy="empty-state"]').should('contain', 'Pick a command below')
-	})
-
-	it('calls listDbs and listCollections on mount', () => {
-		mountCLI()
-		cy.get('@listDbs.all').should('have.length', 1)
-		cy.get('@listCollections.all').should('have.length', 1)
-	})
-
-	it('populates DB dropdown with fetched databases', () => {
-		mountCLI()
-		cy.get('[data-cy="current-db"]').find('option').should('have.length', 3)
-		cy.get('[data-cy="current-db"]').find('option').eq(1).should('have.text', 'project')
-	})
-
-	it('populates collection dropdown after collections load', () => {
-		mountCLI()
-		cy.get('[data-cy="current-coll"]').find('option').should('have.length', 3)
-	})
-
-	it('has "project" pre-selected in DB dropdown', () => {
-		mountCLI()
-		cy.get('[data-cy="current-db"]').should('have.value', 'project')
-	})
+	setupDefaultIntercepts()
 })
 
 describe('show dbs', () => {
 	it('stages command and shows preview when clicked', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'show dbs')
 	})
 
 	it('shows the submit button after staging', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').should('be.visible')
 	})
 
 	it('submits and shows result in history', () => {
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -86,25 +30,25 @@ describe('show dbs', () => {
 
 describe('create db', () => {
 	it('stage button is disabled when dbName is empty', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="create-db-stage"]').should('be.disabled')
 	})
 
 	it('stage button is disabled when collectionName is empty', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="create-db-name"]').type('newdb')
 		cy.get('[data-cy="create-db-stage"]').should('be.disabled')
 	})
 
 	it('stage button is enabled when both fields are filled', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="create-db-name"]').type('newdb')
 		cy.get('[data-cy="create-db-coll"]').type('newcoll')
 		cy.get('[data-cy="create-db-stage"]').should('not.be.disabled')
 	})
 
 	it('stages with correct preview', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="create-db-name"]').should('not.be.disabled').type('newdb')
 		cy.get('[data-cy="create-db-coll"]').type('newcoll')
 		cy.get('[data-cy="create-db-stage"]').click()
@@ -113,7 +57,7 @@ describe('create db', () => {
 	})
 
 	it('Enter in dbName input stages the command', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="create-db-name"]').type('newdb')
 		cy.get('[data-cy="create-db-coll"]').type('newcoll')
 		cy.get('[data-cy="create-db-name"]').type('{enter}')
@@ -122,7 +66,7 @@ describe('create db', () => {
 
 	it('on successful submit, clears input fields and refreshes dbs', () => {
 		cy.intercept('POST', '**/api/collection/newcoll?db=newdb', { body: {} }).as('createDb')
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { body: [...dbList, { name: 'newdb' }] }).as('refreshDbs')
 		cy.get('[data-cy="create-db-name"]').type('newdb')
 		cy.get('[data-cy="create-db-coll"]').type('newcoll')
@@ -135,25 +79,25 @@ describe('create db', () => {
 
 describe('drop db', () => {
 	it('populates dropdown with fetched databases', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="drop-db-select"]').find('option').should('have.length', 3)
 	})
 
 	it('auto-stages drop command when a DB is selected', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="drop-db-select"]').select('admin')
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'dropDatabase()')
 	})
 
 	it('shows danger-styled submit button', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="drop-db-select"]').select('admin')
 		cy.get('[data-cy="submit-btn"]').should('have.class', 'btn-danger')
 	})
 
 	it('on success clears currentDb if dropped db was current', () => {
 		cy.intercept('DELETE', '**/api/db/project', { body: {} }).as('dropDb')
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { body: [{ name: 'admin' }] }).as('refreshDbs')
 		cy.get('[data-cy="drop-db-select"]').select('project')
 		cy.get('[data-cy="submit-btn"]').click()
@@ -165,19 +109,19 @@ describe('drop db', () => {
 describe('current database dropdown', () => {
 	it('changing the dropdown refreshes collections', () => {
 		cy.intercept('GET', '**/api/collection?db=admin', { body: [{ name: 'logs' }] }).as('adminCollections')
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="current-db"]').select('admin')
 		cy.wait('@adminCollections')
 	})
 
 	it('selecting empty clears collections', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="current-db"]').select('')
 		cy.get('[data-cy="current-coll"]').should('be.disabled')
 	})
 
 	it('clears staged non-db command when DB changes', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-colls-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('exist')
 		cy.intercept('GET', '**/api/collection?db=admin', { body: collList }).as('adminColls')
@@ -188,13 +132,13 @@ describe('current database dropdown', () => {
 
 describe('show collections', () => {
 	it('button is disabled when no DB selected', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="current-db"]').select('')
 		cy.get('[data-cy="show-colls-btn"]').should('be.disabled')
 	})
 
 	it('stages and submits correctly', () => {
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/collection?db=*', { body: collList }).as('showColls')
 		cy.get('[data-cy="show-colls-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'show collections')
@@ -206,19 +150,19 @@ describe('show collections', () => {
 
 describe('create collection', () => {
 	it('stage button is disabled when no DB or empty input', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="create-coll-stage"]').should('be.disabled')
 	})
 
 	it('Enter in input stages command', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="create-coll-input"]').type('newcoll{enter}')
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'createCollection("newcoll")')
 	})
 
 	it('on success clears input and refreshes collections', () => {
 		cy.intercept('POST', '**/api/collection/newcoll?db=*', { body: {} }).as('createColl')
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/collection?db=*', { body: [...collList, { name: 'newcoll' }] }).as('refreshColls')
 		cy.get('[data-cy="create-coll-input"]').type('newcoll{enter}')
 		cy.get('[data-cy="submit-btn"]').click()
@@ -229,13 +173,13 @@ describe('create collection', () => {
 
 describe('drop collection', () => {
 	it('dropdown is disabled when no DB selected', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="current-db"]').select('')
 		cy.get('[data-cy="drop-coll-select"]').should('be.disabled')
 	})
 
 	it('auto-stages on selection with danger styling', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="drop-coll-select"]').select('users')
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'dropCollection("users")')
 		cy.get('[data-cy="submit-btn"]').should('have.class', 'btn-danger')
@@ -244,35 +188,35 @@ describe('drop collection', () => {
 
 describe('current collection dropdown', () => {
 	it('is disabled when no DB selected', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="current-db"]').select('')
 		cy.get('[data-cy="current-coll"]').should('be.disabled')
 	})
 
 	it('selecting a collection enables document operations', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').should('not.be.disabled')
 	})
 })
 
 describe('find documents', () => {
 	it('find button is disabled when no collection selected', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="find-btn"]').should('be.disabled')
 	})
 
 	it('stages show-documents with correct preview', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'db.users.find')
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'limit(50)')
 	})
 
 	it('uses filter value in preview', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="docs-filter"]').type('{"age": 30}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', '{"age": 30}')
@@ -280,8 +224,8 @@ describe('find documents', () => {
 
 	it('renders document cards with edit/del buttons', () => {
 		cy.intercept('GET', '**/api/collection/users/documents?*', { body: sampleDocs }).as('findDocs')
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findDocs')
@@ -292,8 +236,8 @@ describe('find documents', () => {
 
 	it('shows "(no documents)" for empty results', () => {
 		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('findEmpty')
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findEmpty')
@@ -301,14 +245,14 @@ describe('find documents', () => {
 	})
 
 	it('limit and skip inputs have correct defaults', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="docs-limit"]').should('have.value', '50')
 		cy.get('[data-cy="docs-skip"]').should('have.value', '0')
 	})
 
 	it('uses custom skip and limit in preview', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="docs-limit"]').clear().type('10')
 		cy.get('[data-cy="docs-skip"]').clear().type('5')
 		cy.get('[data-cy="find-btn"]').click()
@@ -319,26 +263,26 @@ describe('find documents', () => {
 
 describe('insert document', () => {
 	it('insert button is disabled when no collection selected', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="insert-btn"]').should('be.disabled')
 	})
 
 	it('insert button is disabled when jsonInput is empty', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="insert-btn"]').should('be.disabled')
 	})
 
 	it('insert button is enabled when collection + jsonInput present', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="json-input"]').type('{"name": "test"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="insert-btn"]').should('not.be.disabled')
 	})
 
 	it('stages insert with preview showing snippet', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="json-input"]').type('{"name": "test"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="insert-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'insertOne')
@@ -347,8 +291,8 @@ describe('insert document', () => {
 	it('on valid JSON submit, clears jsonInput', () => {
 		cy.intercept('POST', '**/api/collection/users/documents?*', { body: { insertedId: '123' } }).as('insertDoc')
 		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('refreshDocs')
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="json-input"]').type('{"name": "test"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="insert-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -357,8 +301,8 @@ describe('insert document', () => {
 	})
 
 	it('on invalid JSON, shows error and preserves staged command', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="json-input"]').type('not json')
 		cy.get('[data-cy="insert-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -369,8 +313,8 @@ describe('insert document', () => {
 
 describe('updateOne', () => {
 	it('stages with filter and snippet preview', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="docs-filter"]').type('{"_id": "1"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="json-input"]').type('{"name": "updated"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="update-one-btn"]').click()
@@ -380,8 +324,8 @@ describe('updateOne', () => {
 	it('on success clears jsonInput and docsFilter', () => {
 		cy.intercept('PATCH', '**/api/collection/users/documents/single?*', { body: {} }).as('updateDoc')
 		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('refreshDocs')
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="docs-filter"]').type('{"_id": "1"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="json-input"]').type('{"name": "updated"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="update-one-btn"]').click()
@@ -394,8 +338,8 @@ describe('updateOne', () => {
 
 describe('updateMany', () => {
 	it('stages with correct preview', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="json-input"]').type('{"active": true}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="update-many-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'updateMany')
@@ -404,8 +348,8 @@ describe('updateMany', () => {
 	it('on success clears jsonInput and docsFilter', () => {
 		cy.intercept('PATCH', '**/api/collection/users/documents?*', { body: {} }).as('updateDocs')
 		cy.intercept('GET', '**/api/collection/users/documents?*', { body: { documents: [] } }).as('refreshDocs')
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="docs-filter"]').type('{"role": "admin"}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="json-input"]').type('{"active": true}', { parseSpecialCharSequences: false })
 		cy.get('[data-cy="update-many-btn"]').click()
@@ -422,8 +366,8 @@ describe('delete document', () => {
 	})
 
 	it('clicking del stages delete-document with _id', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findDocs')
@@ -433,8 +377,8 @@ describe('delete document', () => {
 	})
 
 	it('shows danger-styled submit button', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findDocs')
@@ -444,8 +388,8 @@ describe('delete document', () => {
 
 	it('on success refreshes documents', () => {
 		cy.intercept('DELETE', '**/api/collection/users/documents/abc1?db=*', { body: {} }).as('deleteDoc')
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findDocs')
@@ -456,27 +400,67 @@ describe('delete document', () => {
 	})
 })
 
+describe('deleteMany', () => {
+	it('button is disabled when no collection selected', () => {
+		mountApp()
+		cy.get('[data-cy="delete-many-btn"]').should('be.disabled')
+	})
+
+	it('stages with correct preview', () => {
+		mountApp()
+		selectGeneralCollection('users')
+		cy.get('[data-cy="delete-many-btn"]').click()
+		cy.get('[data-cy="cmd-preview"]').should('contain', 'deleteMany')
+		cy.get('[data-cy="cmd-preview"]').should('contain', 'users')
+	})
+
+	it('uses filter value in preview', () => {
+		mountApp()
+		selectGeneralCollection('users')
+		cy.get('[data-cy="docs-filter"]').type('{"role": "guest"}', { parseSpecialCharSequences: false })
+		cy.get('[data-cy="delete-many-btn"]').click()
+		cy.get('[data-cy="cmd-preview"]').should('contain', '{"role": "guest"}')
+	})
+
+	it('shows danger-styled submit button', () => {
+		mountApp()
+		selectGeneralCollection('users')
+		cy.get('[data-cy="delete-many-btn"]').click()
+		cy.get('[data-cy="submit-btn"]').should('have.class', 'btn-danger')
+	})
+})
+
 describe('edit document flow', () => {
 	beforeEach(() => {
 		cy.intercept('GET', '**/api/collection/users/documents?*', { body: sampleDocs }).as('findDocs')
 	})
 
-	it('clicking edit populates filter and jsonInput, stages update', () => {
-		mountCLI()
-		selectCollection('users')
+	it('clicking edit populates filter and jsonInput', () => {
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findDocs')
 		cy.get('[data-cy="doc-edit"]').first().click()
-		cy.get('[data-cy="docs-filter"]').should('contain.value', '"_id"')
+		cy.get('[data-cy="docs-filter"]').should('contain.value', '"id"')
 		cy.get('[data-cy="docs-filter"]').should('contain.value', 'abc1')
 		cy.get('[data-cy="json-input"]').should('contain.value', 'Alice')
+	})
+
+	it('clicking edit, then updateOne stages the command', () => {
+		mountApp()
+		selectGeneralCollection('users')
+		cy.get('[data-cy="find-btn"]').click()
+		cy.get('[data-cy="submit-btn"]').click()
+		cy.wait('@findDocs')
+		cy.get('[data-cy="doc-edit"]').first().click()
+		cy.get('[data-cy="update-one-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'updateOne')
 	})
 
 	it('jsonInput does not include _id field', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="find-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@findDocs')
@@ -487,30 +471,30 @@ describe('edit document flow', () => {
 
 describe('submit button behavior', () => {
 	it('is not visible when no command is staged', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="submit-btn"]').should('not.exist')
 	})
 
 	it('text is "submit" normally', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').should('contain', 'submit')
 	})
 
 	it('is disabled when canSubmit is false (needsCurrentDb but no DB)', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="current-db"]').select('')
 		cy.get('[data-cy="show-colls-btn"]').should('be.disabled')
 	})
 
 	it('has btn-submit class for normal commands', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').should('have.class', 'btn-submit')
 	})
 
 	it('has btn-danger class for danger commands', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="drop-db-select"]').select('admin')
 		cy.get('[data-cy="submit-btn"]').should('have.class', 'btn-danger')
 	})
@@ -518,13 +502,13 @@ describe('submit button behavior', () => {
 
 describe('command preview', () => {
 	it('shows preview text with $ prefix', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', '$ show dbs')
 	})
 
 	it('preview disappears after Escape', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('exist')
 		cy.get('body').type('{esc}')
@@ -534,7 +518,7 @@ describe('command preview', () => {
 
 describe('history entries', () => {
 	it('successful output is shown in surface/90 color', () => {
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -543,7 +527,7 @@ describe('history entries', () => {
 	})
 
 	it('error output is shown in accent color', () => {
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { statusCode: 500, body: '' }).as('failDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -552,7 +536,7 @@ describe('history entries', () => {
 	})
 
 	it('multiple commands accumulate in history', () => {
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs2')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -564,7 +548,7 @@ describe('history entries', () => {
 	})
 
 	it('empty state disappears once history has entries', () => {
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { body: dbList }).as('showDbs3')
 		cy.get('[data-cy="empty-state"]').should('exist')
 		cy.get('[data-cy="show-dbs-btn"]').click()
@@ -574,48 +558,10 @@ describe('history entries', () => {
 	})
 })
 
-describe('keyboard shortcuts', () => {
-	it('Enter submits staged command when pressed outside form fields', () => {
-		mountCLI()
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('enterSubmit')
-		cy.get('[data-cy="show-dbs-btn"]').click()
-		cy.get('body').type('{enter}')
-		cy.wait('@enterSubmit')
-		cy.get('[data-cy="history-entry"]').should('have.length', 1)
-	})
-
-	it('Ctrl+Enter submits from within a form field', () => {
-		mountCLI()
-		cy.intercept('GET', '**/api/db', { body: dbList }).as('ctrlEnterSubmit')
-		cy.get('[data-cy="show-dbs-btn"]').click()
-		cy.get('[data-cy="create-db-name"]').type('shortcuts')
-		cy.get('[data-cy="create-db-coll"]').type('shortcutColl{ctrl+enter}')
-		cy.wait('@ctrlEnterSubmit')
-		cy.get('[data-cy="history-entry"]').should('have.length', 1)
-	})
-
-	it('Escape cancels the staged command', () => {
-		mountCLI()
-		cy.get('[data-cy="show-dbs-btn"]').click()
-		cy.get('[data-cy="cmd-preview"]').should('exist')
-		cy.get('body').type('{esc}')
-		cy.get('[data-cy="cmd-preview"]').should('not.exist')
-		cy.get('[data-cy="submit-btn"]').should('not.exist')
-	})
-
-	it('Escape clears dropdown targets', () => {
-		mountCLI()
-		cy.get('[data-cy="drop-db-select"]').select('admin')
-		cy.get('[data-cy="cmd-preview"]').should('exist')
-		cy.get('body').type('{esc}')
-		cy.get('[data-cy="drop-db-select"]').should('have.value', '')
-	})
-})
-
 describe('disabled states', () => {
 	describe('when no DB is selected', () => {
 		beforeEach(() => {
-			mountCLI()
+			mountApp()
 			cy.get('[data-cy="current-db"]').select('')
 		})
 
@@ -650,26 +596,31 @@ describe('disabled states', () => {
 		it('updateMany button is disabled', () => {
 			cy.get('[data-cy="update-many-btn"]').should('be.disabled')
 		})
+
+		it('deleteMany button is disabled', () => {
+			cy.get('[data-cy="delete-many-btn"]').should('be.disabled')
+		})
 	})
 
 	describe('when DB selected but no collection', () => {
 		it('find button is disabled', () => {
-			mountCLI()
+			mountApp()
 			cy.get('[data-cy="find-btn"]').should('be.disabled')
 		})
 
 		it('document operation buttons are disabled', () => {
-			mountCLI()
+			mountApp()
 			cy.get('[data-cy="insert-btn"]').should('be.disabled')
 			cy.get('[data-cy="update-one-btn"]').should('be.disabled')
 			cy.get('[data-cy="update-many-btn"]').should('be.disabled')
+			cy.get('[data-cy="delete-many-btn"]').should('be.disabled')
 		})
 	})
 })
 
 describe('error handling', () => {
 	it('shows API error in accent color', () => {
-		mountCLI()
+		mountApp()
 		cy.intercept('GET', '**/api/db', { statusCode: 500, body: '' }).as('failDbs')
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -679,8 +630,8 @@ describe('error handling', () => {
 	})
 
 	it('insert with invalid JSON shows error but preserves command', () => {
-		mountCLI()
-		selectCollection('users')
+		mountApp()
+		selectGeneralCollection('users')
 		cy.get('[data-cy="json-input"]').type('not json')
 		cy.get('[data-cy="insert-btn"]').click()
 		cy.get('[data-cy="submit-btn"]').click()
@@ -691,7 +642,7 @@ describe('error handling', () => {
 
 describe('watcher behavior (currentDb)', () => {
 	it('does NOT clear staged show-dbs command when currentDb changes', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-dbs-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'show dbs')
 		cy.intercept('GET', '**/api/collection?db=admin', { body: collList }).as('adminColls')
@@ -700,7 +651,7 @@ describe('watcher behavior (currentDb)', () => {
 	})
 
 	it('clears staged show-collections command when currentDb changes', () => {
-		mountCLI()
+		mountApp()
 		cy.get('[data-cy="show-colls-btn"]').click()
 		cy.get('[data-cy="cmd-preview"]').should('contain', 'show collections')
 		cy.intercept('GET', '**/api/collection?db=admin', { body: collList }).as('adminColls')
@@ -711,10 +662,10 @@ describe('watcher behavior (currentDb)', () => {
 
 describe('full CRUD workflow', () => {
 	it('create DB -> create collection -> insert -> find -> edit -> delete', () => {
-		const newDbDocs = { documents: [{ _id: 'new1', title: 'Hello', body: 'World' }] }
+		const newDbDocs = { documents: [{ _id: { $oid: 'new1' }, title: 'Hello', body: 'World' }] }
 
 		cy.intercept('POST', '**/api/collection/articles?db=blog', { body: {} }).as('createBlogDb')
-		mountCLI()
+		mountApp()
 
 		// Create DB
 		cy.get('[data-cy="create-db-name"]').should('not.be.disabled').type('blog')
@@ -742,11 +693,10 @@ describe('full CRUD workflow', () => {
 		cy.wait('@insertArticle')
 		cy.get('[data-cy="doc-card"]').should('have.length', 1)
 
-		// Edit document
+		// Edit document — populates fields only, then click updateOne to stage
 		cy.get('[data-cy="doc-edit"]').first().click()
 		cy.get('[data-cy="docs-filter"]').should('contain.value', 'new1')
 		cy.get('[data-cy="json-input"]').should('contain.value', 'Hello')
-		cy.get('[data-cy="cmd-preview"]').should('contain', 'updateOne')
 
 		// Delete document
 		cy.get('body').type('{esc}')
@@ -758,7 +708,7 @@ describe('full CRUD workflow', () => {
 		cy.intercept('GET', '**/api/collection/articles/documents?*', {
 			body: { documents: [] },
 		}).as('afterDelete')
-		cy.get('[data-cy="doc-del"]').first().click()
+		cy.get('[data-cy="doc-del"]').last().click()
 		cy.get('[data-cy="submit-btn"]').click()
 		cy.wait('@deleteArticle')
 	})

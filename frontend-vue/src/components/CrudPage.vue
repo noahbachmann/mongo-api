@@ -63,6 +63,7 @@
 				<span class="text-surface/40 text-xs uppercase tracking-wide">Database</span>
 				<select
 					v-model="currentDb"
+					data-cy="crud-db-select"
 					class="input-cli">
 					<option value="">— select db —</option>
 					<option
@@ -78,6 +79,7 @@
 				<span class="text-surface/40 text-xs uppercase tracking-wide">Collection</span>
 				<select
 					v-model="selectedCollection"
+					data-cy="crud-coll-select"
 					:disabled="!currentDb || !collections.length"
 					class="input-cli disabled:opacity-40">
 					<option value="">— select coll —</option>
@@ -95,6 +97,7 @@
 
 		<!-- Filter builder -->
 		<div
+			data-cy="crud-filter"
 			class="flex flex-col gap-6"
 			:class="!canRun ? 'opacity-50' : ''">
 			<span class="text-surface/40 text-sm uppercase tracking-wide">Filter</span>
@@ -105,6 +108,7 @@
 
 		<!-- Body builder -->
 		<div
+			data-cy="crud-body"
 			class="flex flex-col gap-6"
 			:class="!canRun ? 'opacity-50' : ''">
 			<span class="text-surface/40 text-sm uppercase tracking-wide">Body</span>
@@ -119,6 +123,7 @@
 		<div class="flex flex-wrap items-center gap-6">
 			<button
 				type="button"
+				data-cy="crud-find-btn"
 				class="btn btn-cmd"
 				:disabled="!canRun"
 				@click="stage('show-documents', { collection: selectedCollection, filter: buildFilter() })">
@@ -126,6 +131,7 @@
 			</button>
 			<button
 				type="button"
+				data-cy="crud-insert-btn"
 				class="btn btn-cmd"
 				:disabled="!canRun || !hasBody"
 				@click="stage('insert-document', { collection: selectedCollection, body: buildBody() })">
@@ -133,6 +139,7 @@
 			</button>
 			<button
 				type="button"
+				data-cy="crud-update-one-btn"
 				class="btn btn-cmd"
 				:disabled="!canRun || !hasBody"
 				@click="
@@ -142,6 +149,7 @@
 			</button>
 			<button
 				type="button"
+				data-cy="crud-update-many-btn"
 				class="btn btn-cmd"
 				:disabled="!canRun || !hasBody"
 				@click="
@@ -151,6 +159,7 @@
 			</button>
 			<button
 				type="button"
+				data-cy="crud-delete-one-btn"
 				class="btn btn-cmd btn-danger"
 				:disabled="!canRun || !hasFilterId"
 				:title="!hasFilterId ? 'add id to filter' : ''"
@@ -164,6 +173,7 @@
 			</button>
 			<button
 				type="button"
+				data-cy="crud-delete-many-btn"
 				class="btn btn-cmd btn-danger"
 				:disabled="!canRun || hasFilterId"
 				:title="hasFilterId ? 'id in filter' : ''"

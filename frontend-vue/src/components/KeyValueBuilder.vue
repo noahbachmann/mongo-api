@@ -37,21 +37,25 @@
 		<div
 			v-for="(pair, i) in modelValue"
 			:key="i"
+			data-cy="kv-row"
 			class="flex max-sm:flex-col sm:items-center gap-6">
 			<input
 				:value="pair.key"
 				:disabled="disabled"
 				placeholder="key"
+				data-cy="kv-key"
 				class="input-cli sm:w-120"
 				@input="updateKey(i, ($event.target as HTMLInputElement).value)" />
 			<input
 				:value="pair.value"
 				:disabled="disabled"
 				placeholder="value"
+				data-cy="kv-value"
 				class="input-cli flex-1"
 				@input="updateValue(i, ($event.target as HTMLInputElement).value)" />
 			<button
 				type="button"
+				data-cy="kv-remove"
 				class="rounded-sm border border-accent hover:bg-accent text-accent hover:text-secondary hover:cursor-pointer size-16 sm:size-20 font-bold transition-all"
 				:disabled="disabled"
 				@click="removePair(i)">
@@ -70,6 +74,7 @@
 		</div>
 		<button
 			type="button"
+			data-cy="kv-add"
 			class="btn-inline self-start"
 			:disabled="disabled"
 			@click="addPair">

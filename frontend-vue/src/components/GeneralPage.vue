@@ -311,6 +311,7 @@
 					</button>
 					<button
 						type="button"
+						data-cy="delete-many-btn"
 						class="btn btn-cmd btn-danger"
 						:disabled="!currentDb || !docsCollection"
 						@click="stage('delete-documents', { collection: docsCollection, filter: docsFilter || undefined })">
