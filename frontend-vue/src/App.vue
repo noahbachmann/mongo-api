@@ -231,12 +231,14 @@
 
 	async function stage(kind: CommandKind, extras: Omit<Command, 'kind'> = {}) {
 		command.value = { kind, ...extras }
+		window.scrollTo({ top: 0 })
 		await nextTick()
 		scrollToBottom()
 	}
 
 	async function submit() {
 		if (!canSubmit.value || running.value || !command.value) return
+		window.scrollTo({ top: 0 })
 		const cmd = command.value
 		const spec = commands[cmd.kind]
 		const preview = commandPreview.value
