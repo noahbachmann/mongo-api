@@ -114,6 +114,7 @@
 		</div>
 		<button
 			type="button"
+			v-if="history.length"
 			class="bg-white/60 hover:bg-white hover:border-white border border-white/90 text-black absolute top-10 right-15 py-2 px-6 rounded-sm hover:cursor-pointer transition-all"
 			@click="emit('clear-history')">
 			clear
