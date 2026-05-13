@@ -1,16 +1,19 @@
-## C# API with nuxt frontend
+# C# API with nuxt frontend
 
-### How to run
+## How to run
 
-After clone, inside the main folder
+After **git clone**, inside the main folder
 
 ```
 docker compose up --build
-cd ./frontend-vue/
-pnpm install
-pnpm dev
 ```
 
-### Ports
+Then you can find the frontend at: [localhost:3005](http://localhost:3005/)
+(or whichever port you set for the FRONTEND_PORT)
 
-**8085** for API - change in .env
+## Ports
+
+you can change these values in the .env-file
+
+**8085** for API (API_PORT)
+**3005** for frontend (FRONTEND_PORT)
