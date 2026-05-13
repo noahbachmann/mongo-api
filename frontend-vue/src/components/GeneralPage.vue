@@ -108,9 +108,9 @@
 	<!-- command bar -->
 	<div class="px-16 py-12 bg-primary/15 border-t border-surface/10 flex flex-col gap-10">
 		<!-- DB row -->
-		<div class="flex flex-wrap max-sm:justify-center items-center gap-10">
-			<div class="flex max-sm:flex-col w-full max-sm:items-center max-sm:gap-4">
-				<span class="text-surface text-sm uppercase tracking-wide sm:w-80">databases</span>
+		<div class="flex flex-col max-sm:justify-center max-sm:items-center sm:items-start gap-10">
+			<div class="flex max-sm:flex-col w-full items-center max-sm:gap-4 gap-8">
+				<span class="text-surface text-sm uppercase tracking-wide">databases</span>
 
 				<button
 					type="button"
@@ -185,10 +185,10 @@
 
 		<!-- COLLECTION row -->
 		<div
-			class="flex flex-col items-center gap-10"
+			class="flex flex-col max-sm:items-center items-start gap-10"
 			:class="!currentDb ? 'opacity-50' : ''">
-			<div class="flex max-sm:flex-col max-sm:gap-4 w-full max-sm:items-center">
-				<p class="text-surface text-sm uppercase tracking-wide w-80">Collections</p>
+			<div class="flex max-sm:flex-col gap-4 sm:gap-8 w-full items-center">
+				<p class="text-surface text-sm uppercase tracking-wide">Collections</p>
 
 				<button
 					type="button"
@@ -220,7 +220,7 @@
 				</button>
 			</div>
 
-			<div class="flex items-center gap-6 px-8 py-10 rounded-sm border border-surface/20">
+			<div class="flex max-sm:items-center gap-6 px-8 py-10 rounded-sm border border-surface/20">
 				<span class="text-surface/70 text-sm">delete coll</span>
 				<select
 					v-model="dropCollectionTarget"
