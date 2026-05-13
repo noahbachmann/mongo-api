@@ -29,6 +29,7 @@
 			return
 		}
 		const {
+			// @ts-ignore
 			_id: { $oid: id },
 			...rest
 		} = parsed

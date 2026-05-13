@@ -33,6 +33,15 @@ builder.Services.AddScoped<MongoDBService>(sp =>
     return new MongoDBService(client, settings.DatabaseName);
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:3005")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 var app = builder.Build();
 
 app.UseSwagger();
@@ -43,7 +52,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.UseHttpsRedirection();
 }
-
+app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 

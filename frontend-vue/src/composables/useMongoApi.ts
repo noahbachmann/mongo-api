@@ -11,7 +11,7 @@ async function apiFetch<T>(
 	path: string,
 	init: Omit<RequestInit, 'body'> & { query?: Record<string, unknown>; body?: unknown } = {},
 ): Promise<T> {
-	const base = import.meta.env.API_BASE ?? ''
+	const base = import.meta.env.VITE_API_BASE ?? ''
 	const { query, body, ...rest } = init
 	const url = new URL(path, base || location.origin)
 	if (query) Object.entries(query).forEach(([k, v]) => v != null && url.searchParams.set(k, String(v)))
