@@ -327,11 +327,7 @@
 			class="w-full max-w-4xl sm:rounded-md border border-secondary/15 bg-secondary text-surface font-mono shadow-lg overflow-hidden">
 			<!-- header -->
 			<div class="flex items-center justify-between px-16 py-10 bg-primary/30 border-b border-surface/10 text-sm">
-				<div class="flex items-center gap-8">
-					<span class="size-10 rounded-full bg-accent/80" />
-					<span class="size-10 rounded-full bg-bright-primary/70" />
-					<span class="text-surface/60 ml-8">mongo-cli</span>
-				</div>
+				<span class="text-surface/60 ml-8">mongo-cli</span>
 				<div class="flex items-center gap-6">
 					<button
 						type="button"
